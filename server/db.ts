@@ -17,7 +17,7 @@ const dbPath =
   process.env.SPENDWISE_DB_PATH ?? path.join(dataDir, 'spend-wise.sqlite')
 const schemaPath =
   process.env.SPENDWISE_SCHEMA_PATH ??
-  path.resolve(process.cwd(), '../docs/db/sqlite-schema.sql')
+  path.resolve(process.cwd(), 'server/db/sqlite-schema.sql')
 
 if (!fs.existsSync(schemaPath)) {
   throw new Error(`Schema file not found at ${schemaPath}`)
