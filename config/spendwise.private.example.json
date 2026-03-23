@@ -1,0 +1,41 @@
+{
+  "viewModeRules": {
+    "homeInclude": [
+      "{alias}.merchant = 'Example Merchant' AND {alias}.date = '2026-01-01'"
+    ],
+    "weddingInclude": [
+      "{alias}.merchant = 'Another Merchant' AND {alias}.amount > -1000"
+    ]
+  },
+  "internalTransfer": {
+    "exactMerchants": ["Example Internal Merchant"]
+  },
+  "subSegmentTags": [
+    {
+      "tag_name": "local-favorites",
+      "color": "#22c55e",
+      "icon": "store",
+      "rules": [
+        {
+          "pattern": "Example corner shop",
+          "match_type": "contains",
+          "category_name": "Groceries"
+        }
+      ]
+    }
+  ],
+  "actionCards": [
+    {
+      "id": "private-action",
+      "title": "Private recommendation",
+      "icon": "Phone",
+      "icon_color": "text-teal-400",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Store household-specific bills, dates, providers, or recommendations here instead of in tracked source files."
+        }
+      ]
+    }
+  ]
+}

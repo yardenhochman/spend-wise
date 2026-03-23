@@ -1,0 +1,125 @@
+@import 'tw-animate-css';
+@import 'tailwindcss';
+
+:root {
+  --background: oklch(0.145 0.022 265);
+  --foreground: oklch(0.95 0.01 265);
+  --card: oklch(0.21 0.022 265);
+  --card-foreground: oklch(0.95 0.01 265);
+  --popover: oklch(0.21 0.022 265);
+  --popover-foreground: oklch(0.95 0.01 265);
+  --primary: oklch(0.55 0.22 265);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.3 0.015 265);
+  --secondary-foreground: oklch(0.95 0.01 265);
+  --muted: oklch(0.3 0.015 265);
+  --muted-foreground: oklch(0.65 0.015 265);
+  --accent: oklch(0.3 0.015 265);
+  --accent-foreground: oklch(0.95 0.01 265);
+  --destructive: oklch(0.65 0.2 15);
+  --border: oklch(0.21 0.022 265);
+  --input: oklch(0.21 0.022 265);
+  --ring: oklch(0.55 0.22 265);
+  --radius: 0.875rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* ── Existing SpendWise theme (preserved) ── */
+  --color-page: #0f172a;
+  --color-surface: #1e293b;
+  --color-surface-alt: #334155;
+
+  /* Gray Scale */
+  --color-gray-10: #1e293b;
+  --color-gray-20: #334155;
+  --color-gray-40: #64748b;
+  --color-gray-60: #94a3b8;
+  --color-gray-80: #cbd5e1;
+  --color-gray-100: #f1f5f9;
+
+  /* Category colors */
+  --color-cat-groceries: #00c070;
+  --color-cat-dining: #ff7e14;
+  --color-cat-transport: #5d7afd;
+  --color-cat-housing: #f34f8a;
+  --color-cat-utilities: #8b5cf6;
+  --color-cat-healthcare: #06b6d4;
+  --color-cat-insurance: #f59e0b;
+  --color-cat-entertainment: #ec4899;
+  --color-cat-shopping: #a855f7;
+  --color-cat-subscriptions: #6366f1;
+  --color-cat-salary: #10b981;
+  --color-cat-transfer: #94a3b8;
+  --color-cat-cash: #78716c;
+  --color-cat-fees: #ef4444;
+  --color-cat-savings: #34d399;
+  --color-cat-education: #818cf8;
+  --color-cat-home-purchase: #f97316;
+  --color-cat-wedding: #f472b6;
+  --color-cat-w-venue: #e11d48;
+  --color-cat-w-music: #7c3aed;
+  --color-cat-w-photo: #2563eb;
+  --color-cat-w-planning: #0891b2;
+  --color-cat-w-loan: #be185d;
+  --color-cat-trips-abroad: #0ea5e9;
+  --color-cat-mortgage: #d97706;
+  --color-cat-property-price: #dc2626;
+  --color-cat-purchase-tax: #b91c1c;
+  --color-cat-closing-costs: #ea580c;
+  --color-cat-consulting: #7c3aed;
+  --color-cat-home-loans: #ca8a04;
+  --color-cat-sports: #14b8a6;
+  --color-cat-online-shopping: #c084fc;
+  --color-cat-home-setup: #fb923c;
+  --color-cat-pets: #4ade80;
+  --color-cat-home-maintenance: #d97706;
+  --color-cat-workshops: #e879f9;
+  --color-cat-taxes: #dc2626;
+  --color-cat-other: #9ca3af;
+
+  /* State */
+  --color-positive: #34d399;
+  --color-negative: #fb7185;
+
+  /* Brand */
+  --color-brand: #6366f1;
+  --color-brand-dark: #4f46e5;
+}
+
+body {
+  @apply m-0 bg-page;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
+    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--color-gray-100);
+}
+
+code {
+  font-family:
+    source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}

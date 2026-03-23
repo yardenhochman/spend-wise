@@ -1,0 +1,82 @@
+{
+  "viewModeRules": {
+    "homeInclude": [
+      "{alias}.merchant = 'לאומי למשכנת-י'",
+      "{alias}.merchant = 'הלואה-תשלום 108'",
+      "{alias}.merchant LIKE 'תשלום קרן%הלוואה'",
+      "{alias}.merchant LIKE 'תשלום ריבית%הלוואה' OR {alias}.merchant LIKE 'ריבית על הלוואה%'"
+    ],
+    "weddingInclude": []
+  },
+  "internalTransfer": {
+    "exactMerchants": []
+  },
+  "subSegmentTags": [],
+  "actionCards": [
+    {
+      "id": "subscription-review",
+      "title": "Review recurring subscriptions",
+      "icon": "CreditCard",
+      "icon_color": "text-yellow-400",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Review every recurring charge once a quarter and cancel or downgrade anything you no longer use weekly."
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "List all active charges in Subscriptions, Insurance, and Utilities.",
+            "Mark each one as keep, downgrade, renegotiate, or cancel.",
+            "Set a reminder before promo pricing expires so the bill does not silently increase."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sale-calendar",
+      "title": "Plan large purchases around sale windows",
+      "icon": "ShoppingCart",
+      "icon_color": "text-purple-400",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "For non-urgent purchases, wait for predictable annual sale periods instead of buying at full price."
+        },
+        {
+          "type": "table",
+          "headers": ["Event", "Typical timing", "Best for"],
+          "rows": [
+            ["Spring platform sales", "March", "Electronics, small gadgets"],
+            ["Mid-year sales", "June", "General purchases"],
+            ["Prime Day / summer sales", "July", "Tech, home goods"],
+            ["Singles' Day", "November", "Marketplace deals"],
+            ["Black Friday", "Late November", "Higher-ticket items"]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "insurance-audit",
+      "title": "Audit insurance overlap",
+      "icon": "Shield",
+      "icon_color": "text-emerald-400",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Households often pay for overlapping life, health, and supplemental coverage across multiple providers."
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "Request a full coverage breakdown from each provider.",
+            "Check for duplicate supplemental coverage or outdated riders.",
+            "Cancel the policy that adds the least value after comparing exclusions and deductibles."
+          ]
+        }
+      ]
+    }
+  ]
+}

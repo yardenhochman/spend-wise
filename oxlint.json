@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "react-hooks"],
+  "rules": {
+    "no-var": "error",
+    "prefer-const": "error",
+    "no-debugger": "error"
+  },
+  "ignorePatterns": ["dist/**", "node_modules/**", "src/routeTree.gen.ts"]
+}
