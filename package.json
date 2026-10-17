@@ -16,7 +16,8 @@
     "import:bank-scraper": "tsx server/import-bank-scraper.ts",
     "import:leumi-cards": "tsx server/import-leumi-cards.ts",
     "import:leumi-mortgages": "tsx server/import-leumi-mortgages.ts",
-    "refresh:financial-state": "tsx server/refresh-financial-state.ts"
+    "refresh:financial-state": "tsx server/refresh-financial-state.ts",
+    "docs:leumi": "tsx server/leumi-documents.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
