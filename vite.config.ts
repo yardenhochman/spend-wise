@@ -19,7 +19,7 @@ const config = defineConfig({
       .map((host) => host.trim())
       .filter(Boolean),
     proxy: {
-      '/api': 'http://localhost:4000',
+      '/api': process.env.SPENDWISE_API_URL ?? 'http://localhost:4000',
     },
   },
   plugins: [
