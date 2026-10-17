@@ -469,3 +469,22 @@ export function renameObligation(id: string, name: string, preview = false) {
     body: JSON.stringify({ name, confirmed: true }),
   })
 }
+
+export function markObligationMonth(
+  id: string,
+  month: string,
+  status: 'paid' | 'clear',
+  note?: string,
+  preview = false,
+) {
+  if (preview)
+    return ResultAsync.fromSafePromise(Promise.resolve({ month, status, note }))
+  return safeFetchJson<unknown>(
+    `/obligations/${encodeURIComponent(id)}/months/${encodeURIComponent(month)}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, note }),
+    },
+  )
+}

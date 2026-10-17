@@ -1,4 +1,4 @@
-# SpendWise home redesign — shared API contract (v1)
+# SpendWise home redesign — shared API contract (v2)
 
 Product decisions (by the owner, final):
 - The home screen becomes three modes switched with BOTTOM TABS: **Runway**, **Commitments**, **Brief**.
@@ -26,7 +26,7 @@ interface RunwayResponse {
 
 ## GET /api/home/commitments?months=6
 ```ts
-type TrailStatus = 'paid' | 'due' | 'late' | 'unconfirmed' | 'none'
+type TrailStatus = 'paid' | 'due' | 'late' | 'unconfirmed' | 'none' | 'external'
 interface CommitmentsResponse {
   months: string[]                   // oldest → newest, length = months
   obligations: {
@@ -123,3 +123,14 @@ interface ProjectsResponse { projects: { tag: string; label: string; net: number
 - Raw merchant matching uses the shared NFKC/case/whitespace and bank suffix normalization. Display labels and obligation names do not change matching. HOA fees match the same bank merchant on checking or cards; card-paid commitments remain covered by card settlements in Runway.
 - Mortgage candidates must have mortgage/loan/standing-order evidence as well as amount and date compatibility. An arbitrary transfer or card settlement is insufficient. Same-pattern/day pairs or complete groups can consume a combined debit once; allocated costs sum to the original debit. Individual mortgages remain separate forecast events when no payment is observed.
 - Regression coverage uses synthetic fixtures for API confirmation toggles, variable/split amounts, generic loan descriptions, competing rules, due/grace boundaries, month/year wrap, card-paid HOA fees, individual standing-order mortgages and combined mortgage allocation. Real-copy API checks must restore the pre-run database backup and stop the temporary server afterward; private observations stay outside Git.
+
+## Payee and payment-source corrections (2026-10-17)
+
+- Obligation POST/PUT accepts `matchingRules: { pattern: string; payee?: string | null; expectedAmount?: number | null; effectiveFrom?: string | null; tolerance?: number }[]` (1–30). The array replaces the rules atomically. Existing `matchPattern` remains supported; changing it alone replaces the rules with that merchant pattern. Confirm/name-only writes retain all rules. Normalized merchant and optional payee containment must both match. Each rule's amount/tolerance governs fixed HOA/loan payments. For the same merchant/payee, the latest effective rule on or before the occurrence month supersedes older amounts.
+- The additive migration preserves the original primary matching-rule row, adding `payee`, `expected_amount`, `effective_from` and JSON `additional_rules`; the API always exposes one `matchingRules` array. No payment or existing obligation rows are removed.
+- Generic internet/digital/standing-order transfers with bank counterparty notes are grouped by normalized payee across merchant variants; account digits and memo suffixes are stripped from the display name and trail evidence. Explicit obligation names and merchant labels override the payee label. Legacy unnamed generic aggregates with multiple identified payees are replaced in the computed view by separate suggestions; stored history remains intact. A missing monthly observation does not force an otherwise monthly sequence into irregular cadence.
+- `PUT /api/obligations/:id/months/:month` accepts `{status:'paid'|'clear',note?:string}`. Valid calendar month required; unknown IDs return 404, invalid input 400; success 200. Marks upsert idempotently in `obligation_month_marks`; clear deletes only the mark. Trail entries add optional `markedByYou`, `manualNote`, and `payments: {date,amount,payee}[]`. Manual paid marks have a nullable observed amount and never invent a bank payment. They suppress that month's projected payment. Clearing retains imported evidence.
+- POST/PUT also accepts `paidFrom:'tracked'|'untracked'`, nullable `paidFromLabel` and `paidFromSince` (`YYYY-MM`). Missing occurrences from that month are neutral `external` (“Paid elsewhere”); earlier tracked evidence remains paid. Untracked occurrences never generate tracked-cash outflows. Commitments expose the source and label.
+- Private `household.ownAccounts` is `{match:string,label:string,tracked:boolean,payeePattern?:string}[]`. Numeric matches are destination account prefixes; named matches use normalized exact payee names. Optional `payeePattern` is a fallback for notes without account digits, avoiding collisions where the same owner name identifies a different numbered destination. Incoming own-account transfers are internal too. Startup flagging applies regardless of category; identified non-own generic transfers are released from broad legacy merchant flags. All internal movements remain excluded from spending, insights and obligation detection.
+- Trail dots are 44×44px buttons. Their sheet shows date, amount and payee evidence, source status, and manual mark/note controls with retryable errors, keyboard dismissal and focus restoration. Manual marks are also identified beside the trail.
+- Verification stays on the backed-up worktree copy; household API updates and captures live only in `/tmp/sw-real/`. The copy is restored after captures, the private overlay retained, servers stopped, code committed without push.

@@ -3,6 +3,12 @@ import path from 'path'
 
 export interface HouseholdConfig {
   accountNumbers: string[]
+  ownAccounts?: {
+    match: string
+    label: string
+    tracked: boolean
+    payeePattern?: string
+  }[]
   legacyAccountIds?: string[]
   runwayFloor?: number
   obligationMinimum?: number

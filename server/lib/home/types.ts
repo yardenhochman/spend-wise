@@ -8,7 +8,28 @@ export type Kind =
   | 'utility'
   | 'other'
 export type Cadence = 'monthly' | 'bimonthly' | 'yearly' | 'irregular'
-export type TrailStatus = 'paid' | 'due' | 'late' | 'unconfirmed' | 'none'
+export type TrailStatus =
+  | 'paid'
+  | 'due'
+  | 'late'
+  | 'unconfirmed'
+  | 'none'
+  | 'external'
+export interface MatchingRule {
+  pattern: string
+  payee?: string | null
+  expectedAmount?: number | null
+  effectiveFrom?: string | null
+  tolerance?: number
+}
+export interface TrailEntry {
+  month: string
+  status: TrailStatus
+  amount: number | null
+  markedByYou?: boolean
+  manualNote?: string | null
+  payments?: { date: string; amount: number; payee: string }[]
+}
 export interface HomeTransaction {
   id: string
   date: string
@@ -24,6 +45,11 @@ export interface HomeTransaction {
   is_recurring_candidate: number
 }
 export interface Obligation {
+  matchingRules?: MatchingRule[]
+  paidFrom?: 'tracked' | 'untracked'
+  paidFromLabel?: string | null
+  paidFromSince?: string | null
+  monthMarks?: Record<string, string | null>
   userNamed?: boolean
   rawMerchant?: string
   id: string
@@ -69,10 +95,17 @@ export interface RunwayResponse {
 }
 export interface Commitment extends Pick<
   Obligation,
-  'id' | 'name' | 'kind' | 'expectedAmount' | 'cadence' | 'confirmed'
+  | 'id'
+  | 'name'
+  | 'kind'
+  | 'expectedAmount'
+  | 'cadence'
+  | 'confirmed'
+  | 'paidFrom'
+  | 'paidFromLabel'
 > {
   rawMerchant?: string
-  trail: { month: string; status: TrailStatus; amount: number | null }[]
+  trail: TrailEntry[]
   note: string | null
 }
 export interface RecurringItem {

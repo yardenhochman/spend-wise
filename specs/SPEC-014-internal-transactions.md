@@ -1,9 +1,9 @@
 # SPEC-014: Internal Transaction Handling
 
 - **Spec ID**: SPEC-014
-- **Version**: 1
+- **Version**: 2
 - **Status**: current
-- **Last Updated**: 2026-02-28
+- **Last Updated**: 2026-10-17
 
 ---
 
@@ -57,3 +57,11 @@ Some transaction types that look like transfers are NOT flagged internal because
 - Standing orders (הוראת קבע) — these pay actual bills
 - Person-to-person Bit/PayBox transfers — these are real expenses
 - Bank transfer fees — these are real costs
+
+## Own-account destinations
+
+- Privately configured own accounts can be imported or untracked. Transfers to and from these accounts are internal even when no matching transaction is imported from the other side.
+- Account prefixes and named counterparties identify ownership from bank transfer notes, independently of transaction category. The scraper's source account is never mistaken for the destination. A named fallback cannot override an explicit different numbered account.
+- An identified payment to another person or organization remains spending even when its generic merchant text resembles an internal transfer. Destination evidence takes precedence over broad legacy generic-transfer flags.
+- Internal funding transfers are excluded from spending, insights and tracked-cash outflow projections. A commitment paid from an untracked account is represented separately as “Paid elsewhere” (SPEC-019), preserving historical tracked payment evidence.
+- Account identifiers and household ownership rules remain in the gitignored private overlay. Transfer payee labels shown in the UI contain names only, with bank account digits removed.

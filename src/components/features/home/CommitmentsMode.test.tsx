@@ -13,6 +13,7 @@ import {
   confirmHomeObligation,
   dismissHomeObligation,
   getHomeCommitments,
+  markObligationMonth,
   safeFetchJson,
 } from '../../../lib/api'
 import CommitmentsMode from './CommitmentsMode'
@@ -20,6 +21,7 @@ import CommitmentsMode from './CommitmentsMode'
 vi.mock('../../../lib/api', async (original) => ({
   ...(await original<typeof import('../../../lib/api')>()),
   getHomeCommitments: vi.fn(),
+  markObligationMonth: vi.fn(),
   confirmHomeObligation: vi.fn(),
   dismissHomeObligation: vi.fn(),
 }))
@@ -124,4 +126,127 @@ it('confirms all, retains successful confirmations and retries only failures', a
   )
   expect(confirmHomeObligation).toHaveBeenCalledTimes(1)
   expect(confirmHomeObligation).toHaveBeenCalledWith('second', false)
+})
+
+describe('month payment sheet', () => {
+  it('shows payment evidence and neutral external status with keyboard dismissal', async () => {
+    const data = createHomeFixtures(
+      new Date('2030-06-18T12:00:00Z'),
+    ).commitments
+    data.obligations = [
+      {
+        ...data.obligations[0],
+        id: 'example',
+        name: 'Example fee',
+        confirmed: true,
+        paidFrom: 'untracked',
+        paidFromLabel: 'Other account',
+        trail: [
+          {
+            month: '2030-05',
+            status: 'paid',
+            amount: 100,
+            payments: [
+              { date: '2030-05-10', amount: 100, payee: 'Example Committee' },
+            ],
+          },
+          { month: '2030-06', status: 'external', amount: null },
+        ],
+      },
+    ]
+    vi.mocked(getHomeCommitments).mockReturnValue(
+      okAsync({ data, source: 'api' }),
+    )
+    render(<CommitmentsMode />)
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View Example fee, May 2030' }),
+    )
+    await screen.findByRole('dialog')
+    expect(screen.getByText('Example Committee')).toBeTruthy()
+    expect(screen.getByText('10 May 2030')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Mark as paid' })).toBeNull()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close payment details' }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    fireEvent.click(
+      screen.getByRole('button', { name: 'View Example fee, June 2030' }),
+    )
+    expect(
+      await screen.findAllByText('Paid elsewhere · Other account'),
+    ).toHaveLength(2)
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+  it('retains errors for retry, marks a missing month, and clears its mark', async () => {
+    const data = createHomeFixtures(
+      new Date('2030-06-18T12:00:00Z'),
+    ).commitments
+    data.obligations = [
+      {
+        ...data.obligations[0],
+        id: 'example',
+        name: 'Example fee',
+        confirmed: true,
+        trail: [{ month: '2030-06', status: 'late', amount: null }],
+      },
+    ]
+    vi.mocked(getHomeCommitments).mockReturnValue(
+      okAsync({ data, source: 'api' }),
+    )
+    render(<CommitmentsMode />)
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'View Example fee, June 2030',
+      }),
+    )
+    await screen.findByRole('dialog')
+    vi.mocked(markObligationMonth).mockReturnValueOnce(
+      errAsync({ type: 'network', message: 'Synthetic failure' }),
+    )
+    fireEvent.change(screen.getByRole('textbox'), {
+      target: { value: 'Settled separately' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as paid' }))
+    await screen.findByRole('alert')
+    expect(screen.getByRole('textbox').getAttribute('value')).toBe(
+      'Settled separately',
+    )
+    const marked = {
+      ...data,
+      obligations: [
+        {
+          ...data.obligations[0],
+          trail: [
+            {
+              month: '2030-06',
+              status: 'paid' as const,
+              amount: null,
+              markedByYou: true,
+              manualNote: 'Settled separately',
+            },
+          ],
+        },
+      ],
+    }
+    vi.mocked(markObligationMonth).mockReturnValueOnce(okAsync({}))
+    vi.mocked(getHomeCommitments).mockReturnValueOnce(
+      okAsync({ data: marked, source: 'api' }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as paid' }))
+    await screen.findByText('Marked by you · Settled separately')
+    expect(markObligationMonth).toHaveBeenLastCalledWith(
+      'example',
+      '2030-06',
+      'paid',
+      'Settled separately',
+      false,
+    )
+    vi.mocked(markObligationMonth).mockReturnValueOnce(okAsync({}))
+    vi.mocked(getHomeCommitments).mockReturnValueOnce(
+      okAsync({ data, source: 'api' }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Clear mark' }))
+    await screen.findByRole('button', { name: 'Mark as paid' })
+  })
 })

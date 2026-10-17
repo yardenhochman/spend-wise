@@ -1,3 +1,4 @@
+import { transferPayee, isGenericTransfer } from '../payees.js'
 import { createHash } from 'node:crypto'
 import { merchantKey } from '../merchant-labels.js'
 import { addDays, dueDate, median, monthOffset, round } from './dates.js'
@@ -16,6 +17,8 @@ import type {
   Kind,
   MortgageSnapshot,
   Obligation,
+  MatchingRule,
+  TrailEntry,
 } from './types.js'
 export function stableId(prefix: string, value: string): string {
   return `${prefix}-${createHash('sha256').update(value).digest('hex').slice(0, 20)}`
@@ -31,7 +34,7 @@ export function inferCadence(dates: string[]): Cadence {
         Number(months[i].slice(5)),
     )
   const gap = median(gaps)
-  return gap === 1
+  return gap === 1 || (gap <= 2 && gaps.includes(1))
     ? 'monthly'
     : gap === 2
       ? 'bimonthly'
@@ -68,6 +71,39 @@ function amountMatches(
 ): boolean {
   return Math.abs(actual - expected) <= Math.max(1, expected * tolerance)
 }
+export function activeRules(o: Obligation, month: string): MatchingRule[] {
+  const rules = o.matchingRules ?? [{ pattern: o.matchPattern }]
+  return rules.filter(
+    (r) =>
+      (!r.effectiveFrom || r.effectiveFrom <= month) &&
+      !rules.some(
+        (newer) =>
+          merchantKey(newer.pattern) === merchantKey(r.pattern) &&
+          merchantKey(newer.payee ?? '') === merchantKey(r.payee ?? '') &&
+          (newer.effectiveFrom ?? '') > (r.effectiveFrom ?? '') &&
+          newer.effectiveFrom! <= month,
+      ),
+  )
+}
+function matchingRule(
+  o: Obligation,
+  tx: HomeTransaction,
+): MatchingRule | undefined {
+  return activeRules(o, tx.date.slice(0, 7)).find((r) => {
+    if (!merchantKey(tx.merchant).includes(merchantKey(r.pattern))) return false
+    if (
+      r.payee &&
+      !merchantKey(transferPayee(tx.notes) ?? '').includes(merchantKey(r.payee))
+    )
+      return false
+    const expected = r.expectedAmount ?? o.expectedAmount
+    return !(
+      (o.kind === 'loan' || o.kind === 'hoa') &&
+      expected !== null &&
+      !amountMatches(-tx.amount, expected, r.tolerance ?? o.tolerance)
+    )
+  })
+}
 export function matchesObligation(o: Obligation, tx: HomeTransaction): boolean {
   if (
     (!isChecking(tx) && o.kind !== 'hoa') ||
@@ -84,16 +120,7 @@ export function matchesObligation(o: Obligation, tx: HomeTransaction): boolean {
       paymentMonth(o, tx) !== null
     )
   }
-  // Generic loan descriptions can contain several unrelated repayments. Variable
-  // bills/transfers, however, can legitimately change amount or be paid in parts.
-  if (
-    (o.kind === 'loan' || o.kind === 'hoa') &&
-    o.expectedAmount !== null &&
-    !amountMatches(-tx.amount, o.expectedAmount, o.tolerance)
-  )
-    return false
-  const pattern = merchantKey(o.matchPattern)
-  return !!pattern && merchantKey(tx.merchant).includes(pattern)
+  return !!matchingRule(o, tx)
 }
 /** Assign debits independently of confirmation. Combined mortgages share only an allocated amount. */
 export function assignPayments(
@@ -185,6 +212,14 @@ export function assignPayments(
     .filter(({ o }) => o.kind !== 'mortgage')
     .sort(
       (a, b) =>
+        Math.max(
+          0,
+          ...(b.o.matchingRules ?? []).map((r) => r.payee?.length ?? 0),
+        ) -
+          Math.max(
+            0,
+            ...(a.o.matchingRules ?? []).map((r) => r.payee?.length ?? 0),
+          ) ||
         b.o.matchPattern.length - a.o.matchPattern.length ||
         a.o.id.localeCompare(b.o.id),
     )
@@ -215,12 +250,18 @@ export function detectObligations(
       t.category_name === 'Mortgage'
     )
       continue
-    const list = groups.get(t.merchant) ?? []
+    const payee = isGenericTransfer(t.merchant) ? transferPayee(t.notes) : null
+    const key = payee ? `payee:${merchantKey(payee)}` : t.merchant
+    const list = groups.get(key) ?? []
     list.push(t)
-    groups.set(t.merchant, list)
+    groups.set(key, list)
   }
   return [...groups]
-    .flatMap(([merchant, txs]) => {
+    .flatMap(([groupKey, txs]) => {
+      const merchant = txs.at(-1)!.merchant
+      const payee = groupKey.startsWith('payee:')
+        ? transferPayee(txs.at(-1)!.notes)
+        : null
       const dates = txs.map((t) => t.date).sort()
       const cadence = inferCadence(dates)
       if (
@@ -237,7 +278,9 @@ export function detectObligations(
           '-01'
       )
         return []
-      const buildingFee = txs.some(isBuildingFee)
+      const buildingFee =
+        txs.some(isBuildingFee) ||
+        /ועד בית|building committee/i.test(payee ?? '')
       if (
         buildingFee &&
         (cadence !== 'monthly' ||
@@ -267,8 +310,18 @@ export function detectObligations(
       if (expectedAmount < minimum) return []
       return [
         {
-          id: stableId('suggested', merchant),
-          name: transactionLabel(txs.at(-1)!),
+          id: stableId('suggested', groupKey),
+          name:
+            txs.at(-1)!.display_name && txs.at(-1)!.display_name !== merchant
+              ? transactionLabel(txs.at(-1)!)
+              : (payee ?? transactionLabel(txs.at(-1)!)),
+          ...(payee
+            ? {
+                matchingRules: [...new Set(txs.map((t) => t.merchant))].map(
+                  (pattern) => ({ pattern, payee }),
+                ),
+              }
+            : {}),
           kind,
           expectedAmount,
           cadence,
@@ -353,8 +406,12 @@ export function obligationTrail(
     (t) => matchesObligation(o, t) && t.date <= today,
   )
   let note: string | null = null
-  const trail = months.map((month) => {
-    if (o.cadence !== 'irregular' && !occursInMonth(o, month))
+  const trail: TrailEntry[] = months.map((month): TrailEntry => {
+    if (
+      o.cadence !== 'irregular' &&
+      !occursInMonth(o, month) &&
+      !Object.hasOwn(o.monthMarks ?? {}, month)
+    )
       return { month, status: 'none' as const, amount: null }
     const matching = payments.filter((t) => paymentMonth(o, t) === month)
     const amount = matching.length
@@ -365,23 +422,47 @@ export function obligationTrail(
           ),
         )
       : null
+    const expected = matching.length
+      ? (matchingRule(o, matching[0])?.expectedAmount ?? o.expectedAmount)
+      : o.expectedAmount
     const prior = monthsBefore(o, payments, month)
     const stable =
       prior.length >= 3 && coefficientOfVariation(prior.slice(-6)) <= 0.05
     const mismatch =
       amount !== null &&
-      o.expectedAmount !== null &&
+      expected !== null &&
       (o.confirmed || stable) &&
-      Math.abs(amount - o.expectedAmount) >
-        Math.max(
-          20,
-          o.expectedAmount * (o.kind === 'mortgage' ? o.tolerance : 0.05),
-        )
-    if (o.cadence === 'irregular' && amount === null)
+      Math.abs(amount - expected) >
+        Math.max(20, expected * (o.kind === 'mortgage' ? o.tolerance : 0.05))
+    if (
+      o.cadence === 'irregular' &&
+      amount === null &&
+      !Object.hasOwn(o.monthMarks ?? {}, month)
+    )
       return { month, status: 'none' as const, amount: null }
     if (mismatch)
-      note = `The payment in ${month} was ${formatMoney(Math.abs(amount! - o.expectedAmount!))} ${amount! > o.expectedAmount! ? 'above' : 'below'} the expected ${formatMoney(o.expectedAmount!)}.`
-    if (amount !== null) return { month, status: 'paid' as const, amount }
+      note = `The payment in ${month} was ${formatMoney(Math.abs(amount! - expected!))} ${amount! > expected! ? 'above' : 'below'} the expected ${formatMoney(expected!)}.`
+    const evidence = matching.map((t) => ({
+      date: t.date,
+      amount: o.paymentAmounts?.[t.id] ?? -t.amount,
+      payee: transferPayee(t.notes) ?? t.merchant,
+    }))
+    if (Object.hasOwn(o.monthMarks ?? {}, month))
+      return {
+        month,
+        status: 'paid',
+        amount,
+        markedByYou: true,
+        manualNote: o.monthMarks![month],
+        payments: evidence,
+      }
+    if (amount !== null)
+      return { month, status: 'paid', amount, payments: evidence }
+    if (
+      o.paidFrom === 'untracked' &&
+      (!o.paidFromSince || month >= o.paidFromSince)
+    )
+      return { month, status: 'external', amount: null }
     const status = !o.confirmed
       ? ('unconfirmed' as const)
       : o.cadence !== 'irregular' &&
@@ -401,6 +482,8 @@ export function obligationTrail(
     trail,
     note,
     rawMerchant: o.rawMerchant,
+    paidFrom: o.paidFrom,
+    paidFromLabel: o.paidFromLabel,
   }
 }
 export function obligationEvents(
@@ -413,6 +496,12 @@ export function obligationEvents(
   obligations = assignPayments(obligations, rows)
   for (let m = today.slice(0, 7); m <= end.slice(0, 7); m = monthOffset(m, 1))
     for (const o of obligations) {
+      if (
+        (o.paidFrom === 'untracked' &&
+          (!o.paidFromSince || m >= o.paidFromSince)) ||
+        Object.hasOwn(o.monthMarks ?? {}, m)
+      )
+        continue
       // Card-paid commitments are already included in the checking card settlement.
       const latestPayment = rows
         .filter((t) => t.date <= today && matchesObligation(o, t))

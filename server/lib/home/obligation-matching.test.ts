@@ -119,7 +119,9 @@ describe('mortgage debit allocation', () => {
     const paid = assigned.map(
       (o) => obligationTrail(o, rows, ['2030-06'], '2030-06-16').trail[0],
     )
-    expect(paid).toEqual([
+    expect(
+      paid.map(({ month, status, amount }) => ({ month, status, amount })),
+    ).toEqual([
       { month: '2030-06', status: 'paid', amount: 816 },
       { month: '2030-06', status: 'paid', amount: 306 },
     ])

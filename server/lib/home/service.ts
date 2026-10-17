@@ -1,4 +1,5 @@
-import { readMerchantAliases } from '../merchant-labels.js'
+import { transferPayee, isGenericTransfer } from '../payees.js'
+import { merchantKey, readMerchantAliases } from '../merchant-labels.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import type Database from 'better-sqlite3'
@@ -27,6 +28,7 @@ import type {
   HomeTransaction,
   MortgageSnapshot,
   Obligation,
+  MatchingRule,
   ProjectsResponse,
 } from './types.js'
 export interface HomeDeps {
@@ -71,9 +73,22 @@ export function storedObligations(db: Database.Database): {
 } {
   const rows = db
     .prepare(
-      'SELECT o.*,r.pattern,r.tolerance FROM obligations o LEFT JOIN obligation_matching_rules r ON r.obligation_id=o.id ORDER BY o.id',
+      'SELECT o.*,r.pattern,r.tolerance,r.payee,r.expected_amount AS rule_amount,r.effective_from,r.additional_rules FROM obligations o LEFT JOIN obligation_matching_rules r ON r.obligation_id=o.id ORDER BY o.id',
     )
-    .all() as StoredObligation[]
+    .all() as (StoredObligation & {
+    payee: string | null
+    rule_amount: number | null
+    effective_from: string | null
+    additional_rules: string | null
+    paid_from: 'tracked' | 'untracked'
+    paid_from_label: string | null
+    paid_from_since: string | null
+  })[]
+  const marks = db.prepare('SELECT * FROM obligation_month_marks').all() as {
+    obligation_id: string
+    month: string
+    note: string | null
+  }[]
   return {
     obligations: rows
       .filter((r) => !r.deleted)
@@ -89,6 +104,24 @@ export function storedObligations(db: Database.Database): {
         confirmed: !!r.confirmed,
         matchPattern: r.pattern ?? r.name,
         tolerance: r.tolerance ?? 0.15,
+        matchingRules: [
+          {
+            pattern: r.pattern ?? r.name,
+            payee: r.payee,
+            expectedAmount: r.rule_amount,
+            effectiveFrom: r.effective_from,
+            tolerance: r.tolerance ?? 0.15,
+          },
+          ...(JSON.parse(r.additional_rules ?? '[]') as MatchingRule[]),
+        ],
+        paidFrom: r.paid_from,
+        paidFromLabel: r.paid_from_label,
+        paidFromSince: r.paid_from_since,
+        monthMarks: Object.fromEntries(
+          marks
+            .filter((m) => m.obligation_id === r.id)
+            .map((m) => [m.month, m.note]),
+        ),
       })),
     deleted: rows.filter((r) => r.deleted).map((r) => r.id),
   }
@@ -137,6 +170,20 @@ export function homeContext(deps: HomeDeps) {
     ),
     ...mortgages,
   ]
+  // A legacy generic suggestion must not keep swallowing separate payees.
+  stored.obligations = stored.obligations.filter(
+    (o) =>
+      o.userNamed ||
+      o.kind === 'mortgage' ||
+      !isGenericTransfer(o.matchPattern) ||
+      o.matchingRules?.some((r) => r.payee) ||
+      new Set(
+        rows
+          .filter((t) => t.merchant === o.matchPattern)
+          .map((t) => transferPayee(t.notes))
+          .filter(Boolean),
+      ).size < 2,
+  )
   const obligations = assignPayments(
     [
       ...stored.obligations,
@@ -146,7 +193,19 @@ export function homeContext(deps: HomeDeps) {
           !stored.obligations.some(
             (s) =>
               s.id === o.id ||
-              (o.kind !== 'mortgage' && s.matchPattern === o.matchPattern),
+              (o.kind !== 'mortgage' &&
+                (o.matchingRules ?? [{ pattern: o.matchPattern }]).some(
+                  (candidate) =>
+                    (s.matchingRules ?? [{ pattern: s.matchPattern }]).some(
+                      (saved) =>
+                        merchantKey(candidate.pattern).includes(
+                          merchantKey(saved.pattern),
+                        ) &&
+                        (!saved.payee ||
+                          merchantKey(candidate.payee ?? '') ===
+                            merchantKey(saved.payee)),
+                    ),
+                )),
           ),
       ),
     ].filter((o) => !cardIssuer(o.matchPattern)),
@@ -161,7 +220,12 @@ export function homeContext(deps: HomeDeps) {
       payment &&
       (o.kind !== 'mortgage' || payment.display_name !== payment.merchant)
     )
-      o.name = payment.display_name ?? payment.merchant
+      o.name =
+        payment.display_name && payment.display_name !== payment.merchant
+          ? payment.display_name
+          : isGenericTransfer(payment.merchant)
+            ? (transferPayee(payment.notes) ?? payment.merchant)
+            : payment.merchant
   }
   const importRow = db
     .prepare(

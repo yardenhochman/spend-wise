@@ -54,7 +54,11 @@ function request<T = Record<string, unknown>>(
     end,
   }
   route.stack[0].handle(
-    { query, body, params: { id: query.id } } as unknown as Request,
+    {
+      query,
+      body,
+      params: { id: query.id, month: query.month },
+    } as unknown as Request,
     res as unknown as Response,
     (error: unknown) => {
       if (error) throw error
@@ -802,4 +806,167 @@ describe('merchant labels', () => {
     expect(fresh.paymentIds).toEqual(original.paymentIds)
     expect(storedObligations(db).obligations).toHaveLength(1)
   })
+})
+
+describe('payee rules and manual month API', () => {
+  it('round-trips multiple rules and source fields, and marks/clears months idempotently', () => {
+    insert('old', '2030-04-10', 'Example Management', -100, 'card')
+    insert(
+      'new',
+      '2030-06-10',
+      'הע. אינטרנט',
+      -250,
+      'checking',
+      'utilities',
+      'scraper account 111-22222_33; העברה אל: Example Committee 88-222-00099',
+    )
+    deps.today = () => '2030-04-01'
+    const made = request<{ id: string }>('post', '/api/obligations', {
+      name: 'Example building fee',
+      kind: 'hoa',
+      expectedAmount: 250,
+      matchingRules: [
+        { pattern: 'Example Management', expectedAmount: 100 },
+        {
+          pattern: 'הע. אינטרנט',
+          payee: 'Example Committee',
+          expectedAmount: 250,
+          effectiveFrom: '2030-06',
+        },
+      ],
+    })
+    deps.today = () => '2030-06-18'
+    const id = made.data!.id
+    expect(made.status).toBe(201)
+    expect(
+      request('put', '/api/obligations/:id', { confirmed: true }, { id })
+        .status,
+    ).toBe(200)
+    expect(storedObligations(db).obligations[0].matchingRules).toHaveLength(2)
+    const trail = () =>
+      request<
+        ReturnType<typeof import('../lib/home/service.js').homeCommitments>
+      >('get', '/api/home/commitments').data!.obligations.find(
+        (o) => o.id === id,
+      )!.trail
+    expect(trail().find((t) => t.month === '2030-04')).toMatchObject({
+      status: 'paid',
+      amount: 100,
+    })
+    expect(trail().find((t) => t.month === '2030-06')).toMatchObject({
+      status: 'paid',
+      amount: 250,
+      payments: [{ payee: 'Example Committee' }],
+    })
+    for (let i = 0; i < 2; i++)
+      expect(
+        request(
+          'put',
+          '/api/obligations/:id/months/:month',
+          { status: 'paid', note: 'Settled separately' },
+          { id, month: '2030-05' },
+        ).status,
+      ).toBe(200)
+    expect(trail().find((t) => t.month === '2030-05')).toMatchObject({
+      status: 'paid',
+      markedByYou: true,
+      manualNote: 'Settled separately',
+      amount: null,
+    })
+    for (let i = 0; i < 2; i++)
+      expect(
+        request(
+          'put',
+          '/api/obligations/:id/months/:month',
+          { status: 'clear' },
+          { id, month: '2030-05' },
+        ).status,
+      ).toBe(200)
+    expect(trail().find((t) => t.month === '2030-05')?.status).toBe('late')
+    request(
+      'put',
+      '/api/obligations/:id/months/:month',
+      { status: 'paid' },
+      { id, month: '2030-06' },
+    )
+    request(
+      'put',
+      '/api/obligations/:id/months/:month',
+      { status: 'clear' },
+      { id, month: '2030-06' },
+    )
+    expect(trail().find((t) => t.month === '2030-06')).toMatchObject({
+      status: 'paid',
+      amount: 250,
+    })
+    expect(
+      request(
+        'put',
+        '/api/obligations/:id',
+        {
+          paidFrom: 'untracked',
+          paidFromLabel: 'Other account',
+          paidFromSince: '2030-05',
+        },
+        { id },
+      ).status,
+    ).toBe(200)
+    expect(trail().find((t) => t.month === '2030-05')?.status).toBe('external')
+    expect(trail().find((t) => t.month === '2030-04')?.status).toBe('paid')
+    expect(storedObligations(db).obligations[0].paidFromLabel).toBe(
+      'Other account',
+    )
+    for (const month of ['2030-13', 'bad', '2030-00'])
+      expect(
+        request(
+          'put',
+          '/api/obligations/:id/months/:month',
+          { status: 'paid' },
+          { id, month },
+        ).status,
+      ).toBe(400)
+    expect(
+      request(
+        'put',
+        '/api/obligations/:id/months/:month',
+        { status: 'invalid' },
+        { id, month: '2030-05' },
+      ).status,
+    ).toBe(400)
+    expect(
+      request(
+        'put',
+        '/api/obligations/:id/months/:month',
+        { status: 'paid' },
+        { id: 'missing', month: '2030-05' },
+      ).status,
+    ).toBe(404)
+  })
+})
+
+it('does not redetect payee groups already covered by an alternative saved rule', () => {
+  for (const month of ['03', '04', '05'])
+    insert(
+      `committee-${month}`,
+      `2030-${month}-10`,
+      'הע. אינטרנט',
+      -200,
+      'checking',
+      'utilities',
+      'scraper account 111-22222_33; העברה אל: Example Committee 88-222-00099',
+    )
+  request('post', '/api/obligations', {
+    name: 'Example building',
+    kind: 'hoa',
+    expectedAmount: 200,
+    matchingRules: [
+      { pattern: 'Example Management', expectedAmount: 100 },
+      {
+        pattern: 'הע. אינטרנט',
+        payee: 'Example Committee',
+        expectedAmount: 200,
+      },
+    ],
+  })
+  expect(homeContext(deps).obligations).toHaveLength(1)
 })

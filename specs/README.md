@@ -55,9 +55,9 @@ When an agent begins work on a spec, it sets status to `in-progress`. Other agen
 | SPEC-011 | [actions.md](./SPEC-011-actions.md)                               | Actions & Recommendations             | current    | 1       |
 | SPEC-012 | [search.md](./SPEC-012-search.md)                                 | Search & Command Palette              | current    | 1       |
 | SPEC-013 | [merchant-normalization.md](./SPEC-013-merchant-normalization.md) | Merchant Normalization                | current    | 2       |
-| SPEC-014 | [internal-transactions.md](./SPEC-014-internal-transactions.md)   | Internal Transaction Handling         | current    | 1       |
+| SPEC-014 | [internal-transactions.md](./SPEC-014-internal-transactions.md)   | Internal Transaction Handling         | current    | 2       |
 | SPEC-015 | [cash-allocations.md](./SPEC-015-cash-allocations.md)             | Cash Allocations & Budgeting          | current    | 1       |
 | SPEC-016 | [spread.md](./SPEC-016-spread.md)                                 | Billing Spread / Amortization         | current    | 1       |
 | SPEC-017 | [export.md](./SPEC-017-export.md)                                 | Export & Reporting                    | current    | 1       |
 | SPEC-018 | [design-system.md](./SPEC-018-design-system.md)                   | Design System & Theming               | current    | 2       |
-| SPEC-019 | [home-modes.md](./SPEC-019-home-modes.md)                         | Household Home Modes                  | current    | 5       |
+| SPEC-019 | [home-modes.md](./SPEC-019-home-modes.md)                         | Household Home Modes                  | current    | 6       |

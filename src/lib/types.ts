@@ -330,7 +330,13 @@ export interface RunwayResponse {
   warnings: string[]
 }
 
-export type TrailStatus = 'paid' | 'due' | 'late' | 'unconfirmed' | 'none'
+export type TrailStatus =
+  | 'paid'
+  | 'due'
+  | 'late'
+  | 'unconfirmed'
+  | 'none'
+  | 'external'
 
 export interface CommitmentsResponse {
   months: string[]
@@ -340,7 +346,16 @@ export interface CommitmentsResponse {
     kind: 'mortgage' | 'tuition' | 'tax' | 'hoa' | 'loan' | 'utility' | 'other'
     expectedAmount: number | null
     cadence: 'monthly' | 'bimonthly' | 'yearly' | 'irregular'
-    trail: { month: string; status: TrailStatus; amount: number | null }[]
+    paidFrom?: 'tracked' | 'untracked'
+    paidFromLabel?: string | null
+    trail: {
+      month: string
+      status: TrailStatus
+      amount: number | null
+      markedByYou?: boolean
+      manualNote?: string | null
+      payments?: { date: string; amount: number; payee: string }[]
+    }[]
     note: string | null
     rawMerchant?: string
     confirmed: boolean

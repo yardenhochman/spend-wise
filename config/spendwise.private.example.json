@@ -37,5 +37,15 @@
         }
       ]
     }
-  ]
+  ],
+  "household": {
+    "ownAccounts": [
+      {
+        "match": "99-111-000",
+        "payeePattern": "Example Owner",
+        "label": "Other personal account",
+        "tracked": false
+      }
+    ]
+  }
 }

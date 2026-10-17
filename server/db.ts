@@ -1,3 +1,5 @@
+import { migrateObligations } from './lib/home/migration.js'
+import { flagOwnAccountTransfers } from './lib/payees.js'
 import { migrateMerchantLabels } from './lib/merchant-labels.js'
 import fs from 'fs'
 import { INTERNAL_SETTLEMENT_MERCHANTS } from './lib/internal-settlements.js'
@@ -30,6 +32,7 @@ db.pragma('journal_mode = WAL')
 
 db.exec(fs.readFileSync(schemaPath, 'utf8'))
 migrateMerchantLabels(db)
+migrateObligations(db)
 
 const nowIso = (): string => new Date().toISOString()
 const toBool = (value: unknown): boolean => Boolean(value)
@@ -354,6 +357,7 @@ function flagInternalTransfers(): void {
 }
 
 flagInternalTransfers()
+flagOwnAccountTransfers(db, spendWiseConfig.household)
 
 // ── Merchant alias seeding ───────────────────────────────────────────────────
 const MERCHANT_ALIASES: {

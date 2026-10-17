@@ -1,7 +1,7 @@
 # SPEC-019: Household Home Modes
 
 - **Spec ID**: SPEC-019
-- **Version**: 5
+- **Version**: 6
 - **Status**: current
 - **Last Updated**: 2026-10-17
 
@@ -75,3 +75,11 @@ All home modes cover household checking accounts and cards together. Committee a
 - A merchant label applies to every past and future transaction with the same normalized bank merchant, including transaction search, Runway, Commitments and Brief. A saved obligation name takes priority over the merchant label, then the bank name.
 - Obligation editing offers “Use this name for all transactions from this merchant”, checked by default. Unchecking saves only the obligation name. Renaming a detected suggestion saves and confirms it while preserving its matching and payment history.
 - A Confirm all control confirms every displayed suggestion. Successful confirmations remain saved if another fails; failures remain visible and retryable. Confirmation does not alter payment history.
+
+## Payees and payment source
+
+- Generic bank transfer commitments are detected separately for each payee. Display only the payee name, with account digits removed; explicit names and merchant labels take precedence.
+- A commitment can recognize several payment descriptions and payees, each with its own expected amount and optional effective month. Historical payments retain their original amount expectations.
+- Tapping a month opens payment evidence (date, positive amount and payee). Missing payments can be marked paid or cleared, with an optional note. Manual marks are explicitly identified and survive refreshes; clearing never removes bank evidence. Controls have at least 44px targets.
+- Commitments paid from an untracked own account show neutral “Paid elsewhere” for missing occurrences from the selected start month. Earlier tracked payments remain visible. These commitments and manually paid months produce no tracked-cash forecast outflow.
+- Own-account destinations are configured privately using account prefixes or payee patterns. Matching transfers are internal even if the destination is not imported, and excluded from spending, insights and tracked-cash projections. Generic transfer descriptions alone do not establish own-account ownership when destination evidence identifies another payee.

@@ -1,4 +1,5 @@
 import MerchantName from '@/components/app/MerchantName'
+import { Dialog } from '@base-ui/react/dialog'
 import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { match } from 'ts-pattern'
@@ -8,6 +9,7 @@ import {
   confirmHomeObligation,
   dismissHomeObligation,
   getHomeCommitments,
+  markObligationMonth,
 } from '@/lib/api'
 import type { CommitmentsResponse, TrailStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -19,6 +21,10 @@ import { paymentCounts } from './presentation'
 function TrailDot({ status, label }: { status: TrailStatus; label: string }) {
   const style = match(status)
     .with('paid', () => 'bg-(--color-positive) text-background')
+    .with(
+      'external',
+      () => 'border border-muted-foreground bg-muted text-muted-foreground',
+    )
     .with('due', () => 'border-2 border-(--color-cat-insurance)')
     .with('late', () => 'bg-destructive text-background')
     .with(
@@ -41,7 +47,7 @@ function TrailDot({ status, label }: { status: TrailStatus; label: string }) {
       {match(status)
         .with('paid', () => <Check size={10} aria-hidden="true" />)
         .with('late', () => <X size={10} aria-hidden="true" />)
-        .with('none', () => <Minus size={9} aria-hidden="true" />)
+        .with('none', 'external', () => <Minus size={9} aria-hidden="true" />)
         .with('unconfirmed', () => (
           <span className="text-[9px]" aria-hidden="true">
             ?
@@ -78,12 +84,68 @@ function Commitments({
     message: string
   } | null>(null)
   const [announcement, setAnnouncement] = useState('')
+  const [monthUpdates, setMonthUpdates] = useState<
+    Record<string, CommitmentsResponse['obligations'][number]['trail'][number]>
+  >({})
+  const [selected, setSelected] = useState<{
+    id: string
+    month: string
+  } | null>(null)
+  const [markNote, setMarkNote] = useState('')
+  const [markError, setMarkError] = useState<string | null>(null)
+  const selectedItem = data.obligations.find((o) => o.id === selected?.id)
+  const selectedTrail =
+    selectedItem && selected
+      ? (monthUpdates[`${selected.id}:${selected.month}`] ??
+        selectedItem.trail.find((t) => t.month === selected.month))
+      : undefined
+  async function markMonth(status: 'paid' | 'clear') {
+    if (!selected || !selectedTrail) return
+    setPendingId(selected.id)
+    setMarkError(null)
+    const result = await markObligationMonth(
+      selected.id,
+      selected.month,
+      status,
+      markNote || undefined,
+      preview,
+    )
+    if (result.isErr()) setMarkError(apiErrorMessage(result.error))
+    else {
+      const fresh = await getHomeCommitments()
+      if (fresh.isErr()) setMarkError(apiErrorMessage(fresh.error))
+      else {
+        const trail = preview
+          ? {
+              ...selectedTrail,
+              status: status === 'paid' ? ('paid' as const) : ('due' as const),
+              markedByYou: status === 'paid',
+              manualNote: markNote,
+            }
+          : fresh.value.data.obligations
+              .find((o) => o.id === selected.id)
+              ?.trail.find((t) => t.month === selected.month)
+        if (trail)
+          setMonthUpdates((updates) => ({
+            ...updates,
+            [`${selected.id}:${selected.month}`]: trail,
+          }))
+        setAnnouncement(
+          status === 'paid' ? 'Month marked as paid.' : 'Manual mark cleared.',
+        )
+      }
+    }
+    setPendingId(null)
+  }
   const currentMonth = data.months.at(-1) ?? format(new Date(), 'yyyy-MM')
   const confirmed = (id: string, existing: boolean) =>
     existing || confirmedIds.includes(id)
-  const obligations = data.obligations.filter(
-    (o) => !dismissedIds.includes(o.id),
-  )
+  const obligations = data.obligations
+    .filter((o) => !dismissedIds.includes(o.id))
+    .map((o) => ({
+      ...o,
+      trail: o.trail.map((t) => monthUpdates[`${o.id}:${t.month}`] ?? t),
+    }))
   const counts = paymentCounts(obligations, currentMonth)
   const hasSuggestions = obligations.some((o) => !confirmed(o.id, o.confirmed))
   async function dismiss(id: string, name: string) {
@@ -188,13 +250,13 @@ function Commitments({
           </p>
         )}
         <div
-          className="mt-4 flex justify-end gap-1.5"
+          className="mt-4 flex justify-end"
           aria-label="Trail months, oldest to newest"
         >
           {data.months.map((month) => (
             <span
               key={month}
-              className="w-5 text-center text-[10px] text-muted-foreground"
+              className="w-11 text-center text-[10px] text-muted-foreground"
               title={formatMonthLabel(month)}
             >
               {formatMonthAbbr(month).split(' ')[0]}
@@ -210,7 +272,7 @@ function Commitments({
         <ul className="divide-y divide-border">
           {obligations.map((item) => (
             <li key={item.id} className="py-3">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-x-3">
                 <div className="min-w-0">
                   <MerchantName
                     name={item.name}
@@ -225,22 +287,47 @@ function Commitments({
                       : formatILS(item.expectedAmount)}{' '}
                     · {cadence(item.cadence)}
                   </p>
+                  {item.paidFrom === 'untracked' && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Paid elsewhere
+                      {item.paidFromLabel ? ` · ${item.paidFromLabel}` : ''}
+                    </p>
+                  )}
                 </div>
-                <div className="flex shrink-0 gap-1.5">
+                <div className="ms-auto flex shrink-0">
                   {data.months.map((month) => {
                     const trail = item.trail.find((t) => t.month === month)
                     const status = trail?.status ?? 'none'
                     return (
-                      <span className="flex w-5 justify-center" key={month}>
+                      <button
+                        type="button"
+                        className="flex size-11 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+                        key={month}
+                        aria-label={`View ${item.name}, ${formatMonthLabel(month)}`}
+                        onClick={() => {
+                          setSelected({ id: item.id, month })
+                          setMarkNote(trail?.manualNote ?? '')
+                          setMarkError(null)
+                        }}
+                      >
                         <TrailDot
                           status={status}
-                          label={`${item.name}, ${formatMonthLabel(month)}: ${status === 'none' ? 'no payment expected' : status}${trail?.amount !== null && trail?.amount !== undefined ? `, ${formatILS(trail.amount)}` : ''}`}
+                          label={`${item.name}, ${formatMonthLabel(month)}: ${status === 'none' ? 'no payment expected' : status === 'external' ? 'paid elsewhere' : status}${trail?.amount !== null && trail?.amount !== undefined ? `, ${formatILS(trail.amount)}` : ''}${trail?.markedByYou ? ', marked by you' : ''}`}
                         />
-                      </span>
+                      </button>
                     )
                   })}
                 </div>
               </div>
+              {item.trail.some((t) => t.markedByYou) && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Marked by you:{' '}
+                  {item.trail
+                    .filter((t) => t.markedByYou)
+                    .map((t) => formatMonthAbbr(t.month))
+                    .join(', ')}
+                </p>
+              )}
               {item.note && (
                 <p
                   className={cn(
@@ -290,18 +377,125 @@ function Commitments({
           className="mt-3 flex flex-wrap gap-x-3 gap-y-2 text-[10px] text-muted-foreground"
           aria-label="Payment history legend"
         >
-          {(['paid', 'due', 'late', 'unconfirmed', 'none'] as const).map(
-            (status) => (
-              <span key={status} className="inline-flex items-center gap-1">
-                <TrailDot status={status} label={status} />
-                {status === 'none'
+          {(
+            ['paid', 'due', 'late', 'unconfirmed', 'external', 'none'] as const
+          ).map((status) => (
+            <span key={status} className="inline-flex items-center gap-1">
+              <TrailDot status={status} label={status} />
+              {status === 'external'
+                ? 'Paid elsewhere'
+                : status === 'none'
                   ? 'Not expected'
                   : status.charAt(0).toUpperCase() + status.slice(1)}
-              </span>
-            ),
-          )}
+            </span>
+          ))}
         </div>
       </section>
+      <Dialog.Root
+        open={selected !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelected(null)
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/60" />
+          <Dialog.Popup className="home-theme fixed inset-x-0 bottom-0 z-50 mx-auto max-h-[85dvh] max-w-[480px] overflow-y-auto rounded-t-3xl border border-border bg-background p-5 pb-[max(24px,env(safe-area-inset-bottom))] text-foreground shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <Dialog.Title className="text-lg font-semibold">
+                  <bdi dir="auto">{selectedItem?.name}</bdi>
+                </Dialog.Title>
+                <Dialog.Description className="mt-1 text-sm text-muted-foreground">
+                  {selected && formatMonthLabel(selected.month)}
+                </Dialog.Description>
+              </div>
+              <Dialog.Close
+                render={<Button variant="ghost" className="size-11 shrink-0" />}
+                aria-label="Close payment details"
+              >
+                <X size={20} />
+              </Dialog.Close>
+            </div>
+            {selectedTrail?.payments?.map((payment, i) => (
+              <div
+                key={i}
+                className="mt-4 flex items-center justify-between gap-4 border-b border-border pb-4"
+              >
+                <div className="min-w-0">
+                  <bdi dir="auto" className="block break-words">
+                    {payment.payee}
+                  </bdi>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {format(parseISO(payment.date), 'd MMM yyyy')}
+                  </p>
+                </div>
+                <span className="shrink-0 tabular-nums">
+                  {formatILS(payment.amount)}
+                </span>
+              </div>
+            ))}
+            {selectedTrail?.markedByYou && (
+              <p className="mt-4 text-sm">
+                Marked by you
+                {selectedTrail.manualNote
+                  ? ` · ${selectedTrail.manualNote}`
+                  : ''}
+              </p>
+            )}
+            {selectedTrail?.status === 'external' && (
+              <p className="mt-4">
+                Paid elsewhere
+                {selectedItem?.paidFromLabel
+                  ? ` · ${selectedItem.paidFromLabel}`
+                  : ''}
+              </p>
+            )}
+            {!selectedTrail?.payments?.length &&
+              !selectedTrail?.markedByYou &&
+              selectedTrail?.status !== 'external' && (
+                <p className="mt-4 text-sm text-muted-foreground">
+                  No matching payment found.
+                </p>
+              )}
+            {(!selectedTrail?.payments?.length ||
+              selectedTrail.markedByYou) && (
+              <div className="mt-5 space-y-3">
+                {!selectedTrail?.markedByYou && (
+                  <label className="block text-sm">
+                    Note (optional)
+                    <input
+                      value={markNote}
+                      onChange={(event) => setMarkNote(event.target.value)}
+                      maxLength={500}
+                      className="mt-2 min-h-11 w-full rounded-lg border border-input bg-background px-3 text-base"
+                    />
+                  </label>
+                )}
+                <Button
+                  className="min-h-11 w-full"
+                  disabled={pendingId !== null}
+                  onClick={() =>
+                    void markMonth(
+                      selectedTrail?.markedByYou ? 'clear' : 'paid',
+                    )
+                  }
+                >
+                  {pendingId
+                    ? 'Saving…'
+                    : selectedTrail?.markedByYou
+                      ? 'Clear mark'
+                      : 'Mark as paid'}
+                </Button>
+              </div>
+            )}
+            {markError && (
+              <p role="alert" className="mt-3 text-sm text-destructive">
+                {markError}
+              </p>
+            )}
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
       <section className="mt-7" aria-labelledby="repayments-title">
         <h2 id="repayments-title" className="mb-2 text-sm font-semibold">
           Repayments
