@@ -32,9 +32,9 @@ function InsightsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-page p-6">
+    <div className="min-h-screen bg-page p-4 sm:p-6">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-2xl font-bold text-gray-100">Insights</h2>
           <Button
             onClick={handleExport}
@@ -48,7 +48,7 @@ function InsightsPage() {
         </div>
 
         {/* View toggle */}
-        <div className="flex items-center gap-2 mb-6">
+        <div className="mb-6 flex flex-wrap items-center gap-2">
           <Button
             variant={view === 'summary' ? 'default' : 'outline'}
             onClick={() => setView('summary')}

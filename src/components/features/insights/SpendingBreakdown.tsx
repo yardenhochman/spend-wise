@@ -277,35 +277,35 @@ export default function SpendingBreakdown() {
       {/* Hero summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-gray-10 shadow-sm">
-          <CardContent className="p-6">
+          <CardContent className="p-5 sm:p-6">
             <div className="flex items-center gap-2 text-negative mb-3">
               <TrendingDown size={20} />
               <span className="text-sm font-medium">Expenses</span>
             </div>
-            <p className="text-3xl font-bold text-gray-100">
+            <p className="text-2xl font-bold text-gray-100 sm:text-3xl">
               {formatILS(data.total_spend)}
             </p>
           </CardContent>
         </Card>
         <Card className="border-gray-10 shadow-sm">
-          <CardContent className="p-6">
+          <CardContent className="p-5 sm:p-6">
             <div className="flex items-center gap-2 text-positive mb-3">
               <TrendingUp size={20} />
               <span className="text-sm font-medium">Income</span>
             </div>
-            <p className="text-3xl font-bold text-gray-100">
+            <p className="text-2xl font-bold text-gray-100 sm:text-3xl">
               {formatILS(data.total_income)}
             </p>
           </CardContent>
         </Card>
         <Card className="border-gray-10 shadow-sm">
-          <CardContent className="p-6">
+          <CardContent className="p-5 sm:p-6">
             <div className="flex items-center gap-2 text-brand mb-3">
               <Wallet size={20} />
               <span className="text-sm font-medium">Net</span>
             </div>
             <p
-              className={`text-3xl font-bold ${net >= 0 ? 'text-positive' : 'text-negative'}`}
+              className={`text-2xl font-bold sm:text-3xl ${net >= 0 ? 'text-positive' : 'text-negative'}`}
             >
               {net >= 0 ? '' : '-'}
               {formatILS(Math.abs(net))}
@@ -317,7 +317,7 @@ export default function SpendingBreakdown() {
       {/* Needs / Wants / Savings split */}
       {data.by_spending_type && (
         <Card className="border-gray-10 shadow-sm">
-          <CardContent className="p-6">
+          <CardContent className="p-5 sm:p-6">
             <h3 className="text-sm font-medium text-gray-60 mb-3">
               Where Your Money Goes
             </h3>
@@ -336,7 +336,7 @@ export default function SpendingBreakdown() {
                 style={{ width: `${data.by_spending_type.savings?.pct ?? 0}%` }}
               />
             </div>
-            <div className="flex justify-between text-sm">
+            <div className="flex flex-col gap-3 text-sm sm:flex-row sm:justify-between">
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
                 <span className="text-gray-60">Needs</span>
@@ -377,7 +377,7 @@ export default function SpendingBreakdown() {
       {/* Category donut chart */}
       {data.by_category.filter((c) => c.total < 0).length > 0 && (
         <Card className="border-gray-10 shadow-sm">
-          <CardContent className="p-6">
+          <CardContent className="p-5 sm:p-6">
             <h3 className="text-sm font-medium text-gray-60 mb-3">
               Spending by Category
             </h3>
@@ -449,7 +449,7 @@ export default function SpendingBreakdown() {
 
       {/* Category breakdown with progress bars */}
       <Card className="border-gray-10 shadow-sm">
-        <CardContent className="p-6">
+        <CardContent className="p-5 sm:p-6">
           <h3 className="text-lg font-bold text-gray-100 mb-5">
             Spending by Category
           </h3>
@@ -533,11 +533,11 @@ export default function SpendingBreakdown() {
                             }
                           }}
                         >
-                          <div className="flex justify-between text-sm mb-1.5">
-                            <span className="text-gray-80 font-medium">
+                          <div className="mb-1.5 flex flex-col gap-1 text-sm sm:flex-row sm:justify-between">
+                            <span className="font-medium text-gray-80">
                               {cat.category_name || 'Uncategorized'}
                             </span>
-                            <span className="text-gray-60 tabular-nums">
+                            <span className="tabular-nums text-gray-60">
                               {formatILS(absTotal)}{' '}
                               <span className="text-gray-40">({pct}%)</span>
                               {cat.vs_avg_pct != null &&

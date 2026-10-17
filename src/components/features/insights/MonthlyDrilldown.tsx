@@ -78,7 +78,7 @@ export default function MonthlyDrilldown() {
   return (
     <div className="space-y-4">
       {/* Year selector */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Button
           variant={!year ? 'default' : 'outline'}
           onClick={() => setYear('')}
@@ -124,7 +124,7 @@ export default function MonthlyDrilldown() {
               {/* Month header */}
               <button
                 onClick={() => toggleMonth(m.month)}
-                className="w-full px-5 py-4 flex items-center justify-between hover:bg-surface-alt/50 transition-colors"
+                className="flex w-full flex-col gap-3 px-4 py-4 text-left transition-colors hover:bg-surface-alt/50 sm:flex-row sm:items-center sm:justify-between sm:px-5"
               >
                 <div className="flex items-center gap-3">
                   {isExpanded ? (
@@ -139,7 +139,7 @@ export default function MonthlyDrilldown() {
                     ({m.count} transactions)
                   </span>
                 </div>
-                <div className="flex items-center gap-6 text-sm">
+                <div className="flex flex-wrap items-center gap-3 text-sm sm:gap-6">
                   <span className="text-negative flex items-center gap-1">
                     <TrendingDown size={14} />
                     {formatILS(spend)}
@@ -159,7 +159,7 @@ export default function MonthlyDrilldown() {
 
               {/* Expanded: category breakdown */}
               {isExpanded && (
-                <div className="border-t border-gray-20 px-5 py-4 space-y-2">
+                <div className="space-y-2 border-t border-gray-20 px-4 py-4 sm:px-5">
                   {expenseCategories.length === 0 ? (
                     <p className="text-gray-40 text-sm">
                       No expenses this month.
@@ -188,7 +188,7 @@ export default function MonthlyDrilldown() {
                               }
                               className="w-full text-left hover:bg-surface-alt/30 rounded-lg px-2 py-1.5 transition-colors"
                             >
-                              <div className="flex justify-between text-sm mb-1">
+                              <div className="mb-1 flex flex-col gap-1 text-sm sm:flex-row sm:justify-between">
                                 <span className="text-gray-80 font-medium flex items-center gap-2">
                                   <span
                                     className={`w-2.5 h-2.5 rounded-full ${colorClass}`}

@@ -418,7 +418,7 @@ function SubscriptionsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-page p-6">
+      <div className="min-h-screen bg-page p-4 sm:p-6">
         <div className="max-w-4xl mx-auto">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-surface-alt rounded w-48" />
@@ -431,14 +431,14 @@ function SubscriptionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-page p-6">
+    <div className="min-h-screen bg-page p-4 sm:p-6">
       <div className="max-w-4xl mx-auto">
         <h2 className="text-2xl font-bold text-gray-100 mb-6">
           Subscriptions & Recurring
         </h2>
 
         {/* Summary bar */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <div className="bg-surface border border-gray-10 rounded-2xl p-4">
             <div className="text-xs text-gray-60 mb-1">
               {annualized ? 'Annual burn' : 'Monthly burn'}
@@ -470,7 +470,7 @@ function SubscriptionsPage() {
         </div>
 
         {/* Toggle row: Active/Past + Monthly/Annual */}
-        <div className="flex items-center gap-2 mb-6">
+        <div className="mb-6 flex flex-wrap items-center gap-2">
           <Button
             variant={tab === 'active' ? 'default' : 'outline'}
             onClick={() => setTab('active')}
@@ -496,7 +496,7 @@ function SubscriptionsPage() {
             Past ({pastItems.length})
           </Button>
 
-          <div className="ml-auto flex items-center bg-surface border border-gray-10 rounded-lg overflow-hidden text-xs">
+          <div className="flex items-center overflow-hidden rounded-lg border border-gray-10 bg-surface text-xs sm:ml-auto">
             <button
               onClick={() => setAnnualized(false)}
               className={`px-3 py-1.5 transition-colors ${
@@ -598,7 +598,7 @@ function SubscriptionsPage() {
                             return (
                               <div
                                 key={item.merchant}
-                                className="flex items-center gap-4 px-4 py-2.5 border-b border-gray-10 last:border-b-0 hover:bg-surface-alt/50"
+                                className="flex flex-wrap items-center gap-3 border-b border-gray-10 px-4 py-3 last:border-b-0 hover:bg-surface-alt/50 sm:flex-nowrap sm:gap-4 sm:py-2.5"
                               >
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
@@ -634,10 +634,12 @@ function SubscriptionsPage() {
                                   </div>
                                 </div>
                                 {merchantTrend && merchantTrend.length >= 2 && (
-                                  <Sparkline
-                                    points={merchantTrend.slice(-12)}
-                                    color={sparkColor}
-                                  />
+                                  <span className="hidden sm:block">
+                                    <Sparkline
+                                      points={merchantTrend.slice(-12)}
+                                      color={sparkColor}
+                                    />
+                                  </span>
                                 )}
                                 <div className="text-right shrink-0">
                                   <div className="text-sm font-medium text-gray-100">
@@ -750,7 +752,7 @@ function SubscriptionsPage() {
                               return (
                                 <div
                                   key={item.merchant}
-                                  className="flex items-center gap-4 px-4 py-2.5 border-b border-emerald-500/10 last:border-b-0 hover:bg-emerald-500/[0.06]"
+                                  className="flex flex-wrap items-center gap-3 border-b border-emerald-500/10 px-4 py-3 last:border-b-0 hover:bg-emerald-500/[0.06] sm:flex-nowrap sm:gap-4 sm:py-2.5"
                                 >
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
@@ -777,10 +779,12 @@ function SubscriptionsPage() {
                                   </div>
                                   {merchantTrend &&
                                     merchantTrend.length >= 2 && (
-                                      <Sparkline
-                                        points={merchantTrend.slice(-12)}
-                                        color="#10b981"
-                                      />
+                                      <span className="hidden sm:block">
+                                        <Sparkline
+                                          points={merchantTrend.slice(-12)}
+                                          color="#10b981"
+                                        />
+                                      </span>
                                     )}
                                   <div className="text-right shrink-0">
                                     <div className="text-sm font-medium text-emerald-400">
@@ -850,7 +854,7 @@ function SubscriptionsPage() {
                 return (
                   <div
                     key={alloc.id}
-                    className="flex items-center gap-4 px-4 py-3 border-b border-gray-10 last:border-b-0"
+                    className="flex flex-wrap items-center gap-3 border-b border-gray-10 px-4 py-3 last:border-b-0 sm:flex-nowrap sm:gap-4"
                   >
                     <DollarSign
                       size={16}
