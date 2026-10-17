@@ -248,7 +248,7 @@ export function buildBrief(
         Math.max(
           0,
           ...o.trail
-            .filter((t) => t.amount !== null && t.status !== 'paid')
+            .filter((t) => t.amount !== null)
             .map((t) => Math.abs(t.amount! - (o.expectedAmount ?? 0))),
         ),
       0,

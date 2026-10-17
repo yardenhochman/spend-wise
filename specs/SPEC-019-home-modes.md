@@ -1,7 +1,7 @@
 # SPEC-019: Household Home Modes
 
 - **Spec ID**: SPEC-019
-- **Version**: 4
+- **Version**: 5
 - **Status**: current
 - **Last Updated**: 2026-10-17
 
@@ -42,6 +42,8 @@ All home modes cover household checking accounts and cards together. Committee a
 - Show current-month counts of paid, due, and late payment statuses across every displayed obligation, including suggestions.
 - Each obligation shows its name, expected amount when known, cadence, note when present, and six months of payment history from oldest to newest.
 - Paid, due, late, unconfirmed, and no payment expected have distinct visual and accessible labels. Month labels and a legend explain the trail.
+- Confirmation preserves payment matching and paid history. Match normalized bank merchants within the occurrence month; use amount tolerance to distinguish fixed repayments sharing a bank description. Variable transfers may consist of several payments. An observed payment remains paid even when an amount difference merits a note. Late requires no matching payment and a date strictly after the due date plus grace.
+- Building fees count payments from checking or cards. Mortgage debits match by amount and payment timing, including standing orders. Each debit has one owner unless it demonstrably pays a combined set of mortgages; allocate that debit across those mortgages without counting its full amount twice.
 - A single banner explains automatically detected suggestions. Compact row controls let users confirm or dismiss each suggestion, with at least 44-pixel hit areas. Dismissals persist and suppress future detection; failures remain visible and can be retried.
 - Repayments show remaining and original balance when known, progress paid off, monthly amount, and expected end date when available. Unknown totals never imply known progress.
 - Stable monthly building management fees are household HOA obligations, including card-paid fees. Card-paid fees are included in cash forecasts through their card settlement and never again as a separate checking payment. Obligations do not also appear in Recurring. Recurring excludes food, groceries, dining and similar habit spending; unknown merchants require subscription-like cadence and amount stability. Merchant aliases and normalization merge service spelling variants. Recurring charges show the annual total, individual amount and cadence, and new, price-change, or upcoming-renewal flags.

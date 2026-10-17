@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { merchantKey } from '../merchant-labels.js'
 import { addDays, dueDate, median, monthOffset, round } from './dates.js'
 import { isChecking } from './household.js'
 import {
@@ -38,6 +39,35 @@ export function inferCadence(dates: string[]): Cadence {
         ? 'yearly'
         : 'irregular'
 }
+/** Whole calendar months for bills; nearest due date ±10 days for mortgage banking delays. */
+function paymentMonth(o: Obligation, tx: HomeTransaction): string | null {
+  const month = tx.date.slice(0, 7)
+  if (o.kind !== 'mortgage') return month
+  const nearest = [-1, 0, 1]
+    .map((offset) => monthOffset(month, offset))
+    .map((month) => ({
+      month,
+      distance: Math.abs(
+        Date.parse(tx.date) - Date.parse(dueDate(month, o.dueDay)),
+      ),
+    }))
+    .sort((a, b) => a.distance - b.distance)[0]
+  return nearest.distance <= 10 * 86400000 ? nearest.month : null
+}
+function mortgageMerchant(o: Obligation, tx: HomeTransaction): boolean {
+  return (
+    /משכנת|mortgage|פרעון הלוואה|פירעון הלוואה|loan repayment|הוראת קבע|standing order/i.test(
+      `${tx.merchant} ${tx.category_name ?? ''}`,
+    ) || merchantKey(tx.merchant).includes(merchantKey(o.matchPattern))
+  )
+}
+function amountMatches(
+  actual: number,
+  expected: number,
+  tolerance: number,
+): boolean {
+  return Math.abs(actual - expected) <= Math.max(1, expected * tolerance)
+}
 export function matchesObligation(o: Obligation, tx: HomeTransaction): boolean {
   if (
     (!isChecking(tx) && o.kind !== 'hoa') ||
@@ -47,61 +77,114 @@ export function matchesObligation(o: Obligation, tx: HomeTransaction): boolean {
     return false
   if (o.paymentIds) return o.paymentIds.includes(tx.id)
   if (o.kind === 'mortgage') {
-    const date = dueDate(tx.date.slice(0, 7), o.dueDay)
     return (
-      (/משכנת|mortgage|פרעון הלוואה|פירעון הלוואה|loan repayment/i.test(
-        `${tx.merchant} ${tx.category_name ?? ''}`,
-      ) ||
-        tx.merchant.toLowerCase().includes(o.matchPattern.toLowerCase())) &&
+      mortgageMerchant(o, tx) &&
       o.expectedAmount !== null &&
-      Math.abs(-tx.amount - o.expectedAmount) <=
-        Math.max(1, o.expectedAmount * o.tolerance) &&
-      Math.abs(Date.parse(tx.date) - Date.parse(date)) <= 5 * 86400000
+      amountMatches(-tx.amount, o.expectedAmount, o.tolerance) &&
+      paymentMonth(o, tx) !== null
     )
   }
-  return tx.merchant.toLowerCase().includes(o.matchPattern.toLowerCase())
+  // Generic loan descriptions can contain several unrelated repayments. Variable
+  // bills/transfers, however, can legitimately change amount or be paid in parts.
+  if (
+    (o.kind === 'loan' || o.kind === 'hoa') &&
+    o.expectedAmount !== null &&
+    !amountMatches(-tx.amount, o.expectedAmount, o.tolerance)
+  )
+    return false
+  const pattern = merchantKey(o.matchPattern)
+  return !!pattern && merchantKey(tx.merchant).includes(pattern)
 }
-/** Assign mortgages first by closest amount/day; every debit has exactly one owner. */
+/** Assign debits independently of confirmation. Combined mortgages share only an allocated amount. */
 export function assignPayments(
   obligations: Obligation[],
   rows: HomeTransaction[],
 ): Obligation[] {
-  const result = obligations.map((o) => ({ ...o, paymentIds: [] as string[] }))
+  const result = obligations.map((o) => ({
+    ...o,
+    paymentIds: [] as string[],
+    paymentAmounts: {} as Record<string, number>,
+  }))
   const used = new Set<string>()
-  const edges = obligations
-    .flatMap((o, index) =>
-      o.kind !== 'mortgage'
-        ? []
-        : rows
-            .filter((t) =>
-              matchesObligation({ ...o, paymentIds: undefined }, t),
-            )
-            .map((t) => ({
-              index,
-              t,
-              score:
-                Math.abs(-t.amount / o.expectedAmount! - 1) +
-                Math.abs(Number(t.date.slice(8)) - o.dueDay) / 1000,
-            })),
+  const mortgages = obligations
+    .map((o, index) => ({ o, index }))
+    .filter(({ o }) => o.kind === 'mortgage' && o.expectedAmount !== null)
+  const groups = mortgages.map((m) => [m])
+  // Consider pairs and complete same-pattern/day groups, without exponential subset search.
+  for (let i = 0; i < mortgages.length; i++) {
+    const group = mortgages.filter(
+      ({ o }) =>
+        o.dueDay === mortgages[i].o.dueDay &&
+        merchantKey(o.matchPattern) ===
+          merchantKey(mortgages[i].o.matchPattern),
     )
+    for (const other of group.filter((m) => m.index > mortgages[i].index))
+      groups.push([mortgages[i], other])
+    if (group.length > 2 && group[0].index === mortgages[i].index)
+      groups.push(group)
+  }
+  const edges = groups
+    .flatMap((group) => {
+      const expected = group.reduce((sum, { o }) => sum + o.expectedAmount!, 0)
+      const tolerance = Math.min(...group.map(({ o }) => o.tolerance))
+      return rows
+        .filter(
+          (t) =>
+            isChecking(t) &&
+            t.amount < 0 &&
+            !isObligationNoise(t) &&
+            group.every(
+              ({ o }) =>
+                mortgageMerchant(o, t) &&
+                paymentMonth(o, t) !== null &&
+                occursInMonth(o, paymentMonth(o, t)!),
+            ) &&
+            amountMatches(-t.amount, expected, tolerance),
+        )
+        .map((t) => ({
+          group,
+          expected,
+          t,
+          score:
+            Math.abs(-t.amount / expected - 1) +
+            Math.abs(
+              Date.parse(t.date) -
+                Date.parse(
+                  dueDate(paymentMonth(group[0].o, t)!, group[0].o.dueDay),
+                ),
+            ) /
+              86400000 /
+              1000,
+        }))
+    })
     .sort(
       (a, b) =>
-        a.score - b.score || a.t.id.localeCompare(b.t.id) || a.index - b.index,
+        a.score - b.score ||
+        a.t.id.localeCompare(b.t.id) ||
+        a.group[0].o.id.localeCompare(b.group[0].o.id),
     )
   const occurrences = new Set<string>()
-  for (const { index, t } of edges) {
-    const key = `${index}:${t.date.slice(0, 7)}`
-    if (used.has(t.id) || occurrences.has(key)) continue
-    result[index].paymentIds.push(t.id)
+  for (const { group, expected, t } of edges) {
+    const keys = group.map(({ o, index }) => `${index}:${paymentMonth(o, t)}`)
+    if (used.has(t.id) || keys.some((key) => occurrences.has(key))) continue
+    let allocated = 0
+    group.forEach(({ o, index }, i) => {
+      const amount =
+        i === group.length - 1
+          ? round(-t.amount - allocated)
+          : round((-t.amount * o.expectedAmount!) / expected)
+      result[index].paymentIds.push(t.id)
+      result[index].paymentAmounts[t.id] = amount
+      allocated += amount
+      occurrences.add(keys[i])
+    })
     used.add(t.id)
-    occurrences.add(key)
   }
   const ordered = obligations
     .map((o, index) => ({ o, index }))
     .filter(({ o }) => o.kind !== 'mortgage')
     .sort(
       (a, b) =>
-        Number(b.o.confirmed) - Number(a.o.confirmed) ||
         b.o.matchPattern.length - a.o.matchPattern.length ||
         a.o.id.localeCompare(b.o.id),
     )
@@ -235,11 +318,19 @@ export function occursInMonth(o: Obligation, month: string): boolean {
     (o.cadence === 'yearly' && delta % 12 === 0)
   )
 }
-function monthsBefore(payments: HomeTransaction[], month: string): number[] {
+function monthsBefore(
+  o: Obligation,
+  payments: HomeTransaction[],
+  month: string,
+): number[] {
   const totals = new Map<string, number>()
   for (const t of payments) {
-    const m = t.date.slice(0, 7)
-    if (m < month) totals.set(m, (totals.get(m) ?? 0) - t.amount)
+    const m = paymentMonth(o, t)
+    if (m && m < month)
+      totals.set(
+        m,
+        (totals.get(m) ?? 0) + (o.paymentAmounts?.[t.id] ?? -t.amount),
+      )
   }
   return [...totals.entries()].sort().map(([, amount]) => amount)
 }
@@ -265,11 +356,16 @@ export function obligationTrail(
   const trail = months.map((month) => {
     if (o.cadence !== 'irregular' && !occursInMonth(o, month))
       return { month, status: 'none' as const, amount: null }
-    const matching = payments.filter((t) => t.date.startsWith(month))
+    const matching = payments.filter((t) => paymentMonth(o, t) === month)
     const amount = matching.length
-      ? round(-matching.reduce((s, t) => s + t.amount, 0))
+      ? round(
+          matching.reduce(
+            (s, t) => s + (o.paymentAmounts?.[t.id] ?? -t.amount),
+            0,
+          ),
+        )
       : null
-    const prior = monthsBefore(payments, month)
+    const prior = monthsBefore(o, payments, month)
     const stable =
       prior.length >= 3 && coefficientOfVariation(prior.slice(-6)) <= 0.05
     const mismatch =
@@ -281,12 +377,11 @@ export function obligationTrail(
           20,
           o.expectedAmount * (o.kind === 'mortgage' ? o.tolerance : 0.05),
         )
-    if (amount !== null && !mismatch)
-      return { month, status: 'paid' as const, amount }
     if (o.cadence === 'irregular' && amount === null)
       return { month, status: 'none' as const, amount: null }
     if (mismatch)
       note = `The payment in ${month} was ${formatMoney(Math.abs(amount! - o.expectedAmount!))} ${amount! > o.expectedAmount! ? 'above' : 'below'} the expected ${formatMoney(o.expectedAmount!)}.`
+    if (amount !== null) return { month, status: 'paid' as const, amount }
     const status = !o.confirmed
       ? ('unconfirmed' as const)
       : o.cadence !== 'irregular' &&
@@ -335,7 +430,9 @@ export function obligationEvents(
       if (
         rows.some(
           (t) =>
-            t.date <= today && t.date.startsWith(m) && matchesObligation(o, t),
+            t.date <= today &&
+            paymentMonth(o, t) === m &&
+            matchesObligation(o, t),
         )
       )
         continue

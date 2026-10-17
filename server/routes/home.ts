@@ -216,7 +216,11 @@ export function mountHomeRoutes(app: Express, deps: HomeDeps): void {
             : (parsed.data.confirmed ?? existing.confirmed),
       }
       save(o)
-      const { paymentIds: _paymentIds, ...entity } = o
+      const {
+        paymentIds: _paymentIds,
+        paymentAmounts: _paymentAmounts,
+        ...entity
+      } = o
       res.json(entity)
     }),
   )

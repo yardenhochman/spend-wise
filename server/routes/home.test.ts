@@ -103,6 +103,42 @@ beforeEach(() => {
 })
 afterEach(() => db.close())
 describe('home route contract', () => {
+  it('preserves payment trails and rules through confirmation-only API writes and merchant renames', () => {
+    for (const [id, date, amount] of [
+      ['march', '2030-03-10', -100],
+      ['april', '2030-04-10', -170],
+      ['may', '2030-05-10', -120],
+      ['june', '2030-06-01', -130],
+    ] as const)
+      insert(id, date, 'Synthetic variable service', amount)
+    const original = homeContext(deps).obligations[0]
+    const get = () =>
+      request<{ obligations: { id: string; trail: unknown }[] }>(
+        'get',
+        '/api/home/commitments',
+      ).data!.obligations.find((o) => o.id === original.id)!.trail
+    const before = get()
+    request('put', '/api/merchant-labels', {
+      rawMerchant: original.matchPattern,
+      label: 'New display name',
+    })
+    for (const confirmed of [true, false, true]) {
+      expect(
+        request(
+          'put',
+          '/api/obligations/:id',
+          { confirmed },
+          { id: original.id },
+        ).status,
+      ).toBe(200)
+      expect(get()).toEqual(before)
+      const fresh = homeContext(deps).obligations.find(
+        (o) => o.id === original.id,
+      )!
+      expect(fresh.paymentIds).toEqual(original.paymentIds)
+      expect(fresh.matchPattern).toBe(original.matchPattern)
+    }
+  })
   it('keeps individual card cycles, suggested/confirmed checking bills and mortgages with no balance', () => {
     for (const m of ['2030-03', '2030-04', '2030-05']) {
       insert(

@@ -37,6 +37,8 @@ export interface Obligation {
   anchorMonth: string
   tolerance: number
   paymentIds?: string[]
+  /** Positive cost allocated from a shared mortgage debit, keyed by transaction ID. */
+  paymentAmounts?: Record<string, number>
 }
 export interface Event {
   rawMerchant?: string

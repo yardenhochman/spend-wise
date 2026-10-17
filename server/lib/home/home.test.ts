@@ -219,7 +219,7 @@ describe('obligations', () => {
       today,
     )
     expect(mismatch.trail[0]).toMatchObject({
-      status: 'late',
+      status: 'paid',
       amount: 150,
     })
     expect(mismatch.note).toContain('₪50')

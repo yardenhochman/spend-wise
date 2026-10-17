@@ -200,7 +200,12 @@ describe('home signal quality regressions', () => {
     const assigned = assignPayments(
       [
         ...mortgages,
-        obligation({ id: 'loan', kind: 'loan', matchPattern: 'פרעון הלוואה' }),
+        obligation({
+          id: 'loan',
+          kind: 'loan',
+          expectedAmount: 900,
+          matchPattern: 'פרעון הלוואה',
+        }),
       ],
       rows,
     )
