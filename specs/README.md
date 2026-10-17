@@ -60,3 +60,7 @@ When an agent begins work on a spec, it sets status to `in-progress`. Other agen
 | SPEC-016 | [spread.md](./SPEC-016-spread.md)                                 | Billing Spread / Amortization         | current | 1       |
 | SPEC-017 | [export.md](./SPEC-017-export.md)                                 | Export & Reporting                    | current | 1       |
 | SPEC-018 | [design-system.md](./SPEC-018-design-system.md)                   | Design System & Theming               | current | 2       |
+
+| SPEC-001 | [navigation.v4.md](./SPEC-001-navigation.v4.md) | Home navigation supersession | in-progress | 4 |
+| SPEC-006 | [view-modes.v4.md](./SPEC-006-view-modes.v4.md) | Home shell supersession | in-progress | 4 |
+| SPEC-019 | [home-modes.md](./SPEC-019-home-modes.md) | Household Home Modes | in-progress | 1 |
