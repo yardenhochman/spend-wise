@@ -16,9 +16,15 @@ import {
   mortgageRepayments,
   obligationEvents,
   obligationTrail,
+  matchesObligation,
 } from './obligations.js'
 import { buildRunway } from './runway.js'
-import { cardIssuer, displayName, type MerchantAlias } from './labels.js'
+import {
+  cardIssuer,
+  displayName,
+  serviceKey,
+  type MerchantAlias,
+} from './labels.js'
 import { cardSettlementEvents, salaryEvents } from './settlements.js'
 import type {
   Balance,
@@ -207,9 +213,18 @@ export function homeCommitments(
   count: number,
 ) {
   const months = monthsThrough(ctx.today, count)
+  const obligationKeys = new Set(
+    ctx.obligations.map((o) => serviceKey({ merchant: o.name })),
+  )
   const items = recurringItems(
     queryRecurring(deps.db, ctx.scope, new Date(ctx.today + 'T12:00:00Z')),
-    ctx.rows,
+    ctx.rows.filter(
+      (t) =>
+        !obligationKeys.has(serviceKey(t)) &&
+        !ctx.obligations.some((o) =>
+          matchesObligation({ ...o, paymentIds: undefined }, t),
+        ),
+    ),
     ctx.today,
   )
   return {

@@ -4,6 +4,10 @@ import { stableId } from './obligations.js'
 import { isChecking } from './household.js'
 import {
   cardIssuer,
+  isolateName,
+  serviceKey,
+  serviceName,
+  stableAmounts,
   formatMoney,
   isObligationNoise,
   transactionLabel,
@@ -21,46 +25,145 @@ export function recurringItems(
   rows: HomeTransaction[],
   today: string,
 ): RecurringItem[] {
-  return items
-    .filter((r) => r.avg_amount < 0)
-    .flatMap((r) => {
-      const txs = rows
-        .filter(
-          (t) =>
-            t.merchant === r.merchant &&
-            t.amount < 0 &&
-            t.date <= today &&
-            !isObligationNoise(t),
+  // Normalize before calculating cadence, costs and flags: aliases are one service.
+  const keys = new Set(
+    items
+      .filter((r) => r.avg_amount < 0)
+      .map((r) =>
+        serviceKey(
+          rows.find((t) => t.merchant === r.merchant) ?? {
+            merchant: r.merchant,
+          },
+        ),
+      ),
+  )
+  const groups = new Map<string, HomeTransaction[]>()
+  for (const t of rows) {
+    const key = serviceKey(t)
+    if (
+      !keys.has(key) ||
+      t.amount >= 0 ||
+      t.date > today ||
+      isObligationNoise(t)
+    )
+      continue
+    const list = groups.get(key) ?? []
+    list.push(t)
+    groups.set(key, list)
+  }
+  return [...groups.values()]
+    .flatMap((history) => {
+      history.sort(
+        (a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id),
+      )
+      const habit =
+        /food|restaurant|grocer|dining|supermarket|cafe|coffee|bakery|pizza|falafel|sushi|burger|cinema|takeaway|fast food|fuel|petrol|אוכל|מסעד|מכולת|סופר|פלאפל|פיצ[ארה]|קפה|מאפי|וולט|wolt|ten.?bis/i
+      if (
+        history.some((t) =>
+          habit.test(
+            `${t.category_name ?? ''} ${t.merchant} ${transactionLabel(t)}`,
+          ),
         )
-        .sort((a, b) => a.date.localeCompare(b.date))
-      if (!txs.length) return []
+      )
+        return []
+      const serviceMerchant =
+        /youtube.*premiu|amazon.*prime|netflix|spotify|icloud|apple\s*(?:music|tv)|disney\s*plus/i.test(
+          serviceName(history.at(-1)!),
+        )
+      if (
+        !serviceMerchant &&
+        history.some((t) =>
+          /shopping|transport|נסיעות|קניות/i.test(t.category_name ?? ''),
+        )
+      )
+        return []
+      // Deduplicate matching alias observations, preserving distinct charges (e.g. two policies).
+      const monthly = new Map<string, HomeTransaction[]>()
+      for (const t of history) {
+        const month = t.date.slice(0, 7)
+        const charges = monthly.get(month) ?? []
+        const duplicate = charges.some(
+          (seen) =>
+            (seen.merchant !== t.merchant ||
+              seen.account_id !== t.account_id) &&
+            Math.abs(seen.amount - t.amount) <= 0.5 &&
+            Math.abs(Date.parse(seen.date) - Date.parse(t.date)) <=
+              2 * 86400000,
+        )
+        if (!duplicate) charges.push(t)
+        monthly.set(month, charges)
+      }
+      const txs = [...monthly.values()].map((charges) => ({
+        ...charges.at(-1)!,
+        amount: charges.reduce((sum, t) => sum + t.amount, 0),
+      }))
+      const latest = txs.at(-1)!
       const gaps = txs
         .slice(1)
         .map(
           (t, i) => (Date.parse(t.date) - Date.parse(txs[i].date)) / 86400000,
         )
       const yearly = gaps.length > 0 && gaps.every((g) => g >= 330 && g <= 400)
-      if (!yearly && !r.is_active) return []
-      const amount = Math.abs(r.recent_avg_amount ?? r.avg_amount)
-      const change =
-        Math.abs(r.avg_amount) > 0 ? amount / Math.abs(r.avg_amount) - 1 : 0
+      if (!yearly && latest.date < monthOffset(today, -2) + today.slice(7))
+        return []
+      const knownService = history.some(
+        (t) =>
+          /subscription|service|utilities|insurance|telecom|internet|phone|מנוי|שירות|ביטוח|תקשורת/i.test(
+            t.category_name ?? '',
+          ) ||
+          (!!t.category_name && serviceMerchant),
+      )
+      if (!knownService) {
+        const recent = txs.slice(-6)
+        const recentGaps = recent
+          .slice(1)
+          .map(
+            (t, i) =>
+              (Date.parse(t.date) - Date.parse(recent[i].date)) / 86400000,
+          )
+        const regular =
+          yearly ||
+          (recentGaps.length >= 2 &&
+            recentGaps.every((g) => g >= 25 && g <= 35))
+        const oncePerMonth = [...monthly]
+          .filter(([month]) => month >= recent[0].date.slice(0, 7))
+          .every(([, charges]) => charges.length === 1)
+        if (
+          recent.length < 3 ||
+          !regular ||
+          !oncePerMonth ||
+          !stableAmounts(
+            recent.map((t) => -t.amount),
+            0.1,
+          )
+        )
+          return []
+      }
+      const recent = txs.filter((t) => t.date >= monthOffset(today, -3) + '-01')
+      const amount =
+        -(recent.length ? recent : [latest]).reduce(
+          (sum, t) => sum + t.amount,
+          0,
+        ) / (recent.length || 1)
+      const average = -txs.reduce((sum, t) => sum + t.amount, 0) / txs.length
+      const change = average > 0 ? amount / average - 1 : 0
       const flag: RecurringItem['flag'] =
         change > 0.1
           ? 'price-up'
           : change < -0.1
             ? 'price-down'
-            : r.first_seen >= monthOffset(today, -3) + '-01'
+            : txs[0].date >= monthOffset(today, -3) + '-01'
               ? 'new'
-              : yearly && addDays(r.last_seen, 365) <= addDays(today, 30)
+              : yearly && addDays(latest.date, 365) <= addDays(today, 30)
                 ? 'renewal-soon'
                 : null
       return [
         {
-          merchant: transactionLabel(txs.at(-1)!),
+          merchant: serviceName(latest),
           amount: round(amount),
           cadence: yearly ? ('yearly' as const) : ('monthly' as const),
           annualized: round(amount * (yearly ? 1 : 12)),
-          lastSeen: r.last_seen,
+          lastSeen: latest.date,
           flag,
           flagDetail:
             flag === 'price-up' || flag === 'price-down'
@@ -69,6 +172,10 @@ export function recurringItems(
         },
       ]
     })
+    .sort(
+      (a, b) =>
+        b.annualized - a.annualized || a.merchant.localeCompare(b.merchant),
+    )
 }
 export interface CategorySeries {
   id: string
@@ -152,11 +259,11 @@ export function buildBrief(
         .join('|')}`,
       'watch',
       mismatches.length === 1
-        ? `${mismatches[0].name}: payment differs`
+        ? `${isolateName(mismatches[0].name)}: payment differs`
         : `${mismatches.length} commitment payments differ`,
       mismatches
         .slice(0, 3)
-        .map((o) => `${o.name}: ${o.note}`)
+        .map((o) => `${isolateName(o.name)}: ${o.note}`)
         .join(' ') +
         (mismatches.length > 3 ? ' Other commitments also need a look.' : ''),
       [],
@@ -193,13 +300,13 @@ export function buildBrief(
         `drift:${changes.map((c) => c.id).join(',')}:${today.slice(0, 7)}`,
         'watch',
         changes.length === 1
-          ? `${changes[0].name} spending changed`
+          ? `${isolateName(changes[0].name)} spending changed`
           : `${changes.length} spending categories changed`,
         changes
           .slice(0, 3)
           .map(
             (c) =>
-              `${c.name} averaged ${formatMoney(c.recent)} a month, compared with ${formatMoney(c.prior)} in the preceding three months.`,
+              `${isolateName(c.name)} averaged ${formatMoney(c.recent)} a month, compared with ${formatMoney(c.prior)} in the preceding three months.`,
           )
           .join(' '),
         expenses.filter((t) => changes.some((c) => c.name === t.category_name)),
@@ -227,13 +334,13 @@ export function buildBrief(
         .join('|')}`,
       'info',
       changedRecurring.length === 1
-        ? `${changedRecurring[0].merchant}: ${changedRecurring[0].flag === 'new' ? 'new recurring charge' : 'price changed'}`
+        ? `${isolateName(changedRecurring[0].merchant)}: ${changedRecurring[0].flag === 'new' ? 'new recurring charge' : 'price changed'}`
         : 'Recurring charges changed',
       changedRecurring
         .slice(0, 3)
         .map(
           (i) =>
-            `${i.merchant} ${i.flag === 'new' ? 'is a new recurring charge' : 'has changed price'}, at about ${formatMoney(i.amount)} per ${i.cadence === 'yearly' ? 'year' : 'month'}.`,
+            `${isolateName(i.merchant)} ${i.flag === 'new' ? 'is a new recurring charge' : 'has changed price'}, at about ${formatMoney(i.amount)} per ${i.cadence === 'yearly' ? 'year' : 'month'}.`,
         )
         .join(' '),
       rows.filter((t) =>
@@ -256,13 +363,13 @@ export function buildBrief(
         .join('|')}`,
       'info',
       ended.length === 1
-        ? `${ended[0].label} ended`
+        ? `${isolateName(ended[0].label)} ended`
         : `${ended.length} projects ended`,
       ended
         .slice(0, 3)
         .map(
           (p) =>
-            `${p.label} has ended, with a final net cost of ${formatMoney(p.net)}.`,
+            `${isolateName(p.label)} has ended, with a final net cost of ${formatMoney(p.net)}.`,
         )
         .join(' '),
       [],

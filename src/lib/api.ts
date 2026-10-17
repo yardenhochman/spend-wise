@@ -87,6 +87,7 @@ export function safeFetchJson<T>(
         }),
       )
     }
+    if (res.status === 204) return okAsync(undefined as T)
     return ResultAsync.fromPromise(res.json() as Promise<T>, () => ({
       type: 'parse' as const,
       message: 'Failed to parse JSON response',
@@ -432,5 +433,13 @@ export function confirmHomeObligation(id: string, preview: boolean) {
   return safeFetchJson<unknown>(`/obligations/${encodeURIComponent(id)}`, {
     method: 'PUT',
     body: JSON.stringify({ confirmed: true }),
+  })
+}
+
+export function dismissHomeObligation(id: string, preview: boolean) {
+  if (import.meta.env.DEV && preview)
+    return okAsync<unknown, ApiError>(undefined)
+  return safeFetchJson<unknown>(`/obligations/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
   })
 }

@@ -223,6 +223,54 @@ describe('home route contract', () => {
       obligations: [],
     })
   })
+  it('dismisses a never-confirmed suggestion durably, without recreating it on fresh GETs', () => {
+    for (const m of ['2030-03', '2030-04', '2030-05']) insert(m, m + '-10')
+    const id = homeContext(deps).obligations[0].id
+    expect(
+      request('delete', '/api/obligations/:id', undefined, { id }).status,
+    ).toBe(204)
+    expect(storedObligations(db).deleted).toContain(id)
+    expect(homeContext(deps).obligations).toEqual([])
+    expect(request('get', '/api/home/commitments').data).toMatchObject({
+      obligations: [],
+    })
+  })
+  it('puts stable card-paid building fees in HOA obligations only, retaining other recurring services', () => {
+    db.exec(
+      "INSERT INTO categories (id,name) VALUES ('housing','Housing'),('subscriptions','Subscriptions')",
+    )
+    for (const m of ['2030-03', '2030-04', '2030-05']) {
+      insert(
+        'hoa' + m,
+        m + '-10',
+        'Synthetic building management',
+        -200,
+        'card',
+        'housing',
+      )
+      insert(
+        'subscription' + m,
+        m + '-10',
+        'Synthetic service',
+        -25,
+        'card',
+        'subscriptions',
+      )
+    }
+    const data = request<{
+      obligations: { id: string; kind: string }[]
+      recurring: { items: { merchant: string }[] }
+    }>('get', '/api/home/commitments').data!
+    expect(data.obligations).toHaveLength(1)
+    expect(data.obligations[0].kind).toBe('hoa')
+    expect(data.recurring.items.map((r) => r.merchant)).toEqual([
+      'Synthetic service',
+    ])
+    request('delete', '/api/obligations/:id', undefined, {
+      id: data.obligations[0].id,
+    })
+    expect(homeContext(deps).obligations).toEqual([])
+  })
   it('creates camelCase entities and validates all mutation fields and missing ids', () => {
     const created = request('post', '/api/obligations', {
       name: 'Synthetic manual bill',

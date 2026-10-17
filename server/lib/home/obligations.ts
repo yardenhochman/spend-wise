@@ -1,7 +1,13 @@
 import { createHash } from 'node:crypto'
 import { addDays, dueDate, median, monthOffset, round } from './dates.js'
 import { isChecking } from './household.js'
-import { formatMoney, isObligationNoise, transactionLabel } from './labels.js'
+import {
+  formatMoney,
+  isBuildingFee,
+  isObligationNoise,
+  stableAmounts,
+  transactionLabel,
+} from './labels.js'
 import type {
   Cadence,
   Commitment,
@@ -33,7 +39,12 @@ export function inferCadence(dates: string[]): Cadence {
         : 'irregular'
 }
 export function matchesObligation(o: Obligation, tx: HomeTransaction): boolean {
-  if (!isChecking(tx) || tx.amount >= 0 || isObligationNoise(tx)) return false
+  if (
+    (!isChecking(tx) && o.kind !== 'hoa') ||
+    tx.amount >= 0 ||
+    isObligationNoise(tx)
+  )
+    return false
   if (o.paymentIds) return o.paymentIds.includes(tx.id)
   if (o.kind === 'mortgage') {
     const date = dueDate(tx.date.slice(0, 7), o.dueDay)
@@ -114,7 +125,7 @@ export function detectObligations(
   const groups = new Map<string, HomeTransaction[]>()
   for (const t of rows) {
     if (
-      !isChecking(t) ||
+      (!isChecking(t) && !isBuildingFee(t)) ||
       isObligationNoise(t) ||
       t.amount >= 0 ||
       t.date > today ||
@@ -143,17 +154,26 @@ export function detectObligations(
           '-01'
       )
         return []
-      const kind: Kind = /ארנונה|arnona|municipal/i.test(merchant)
-        ? 'tax'
-        : /tuition|שכר לימוד|גן ילדים|school/i.test(merchant)
-          ? 'tuition'
-          : /ועד|hoa/i.test(merchant)
-            ? 'hoa'
-            : /loan|הלוואה/i.test(merchant)
-              ? 'loan'
-              : /חשמל|מים|electric|water|utility/i.test(merchant)
-                ? 'utility'
-                : 'other'
+      const buildingFee = txs.some(isBuildingFee)
+      if (
+        buildingFee &&
+        (cadence !== 'monthly' ||
+          !stableAmounts(txs.slice(-6).map((t) => -t.amount)))
+      )
+        return []
+      const kind: Kind = buildingFee
+        ? 'hoa'
+        : /ארנונה|arnona|municipal/i.test(merchant)
+          ? 'tax'
+          : /tuition|שכר לימוד|גן ילדים|school/i.test(merchant)
+            ? 'tuition'
+            : /ועד|hoa/i.test(merchant)
+              ? 'hoa'
+              : /loan|הלוואה/i.test(merchant)
+                ? 'loan'
+                : /חשמל|מים|electric|water|utility/i.test(merchant)
+                  ? 'utility'
+                  : 'other'
       const monthly = [...new Set(dates.map((d) => d.slice(0, 7)))].map(
         (m) =>
           -txs
@@ -288,6 +308,12 @@ export function obligationEvents(
   obligations = assignPayments(obligations, rows)
   for (let m = today.slice(0, 7); m <= end.slice(0, 7); m = monthOffset(m, 1))
     for (const o of obligations) {
+      // Card-paid commitments are already included in the checking card settlement.
+      const latestPayment = rows
+        .filter((t) => t.date <= today && matchesObligation(o, t))
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .at(-1)
+      if (latestPayment && !isChecking(latestPayment)) continue
       const date = dueDate(m, o.dueDay)
       if (
         date < today ||

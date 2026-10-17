@@ -416,19 +416,29 @@ describe('deterministic brief and recurring adapter', () => {
     tx_count: 6,
   }
   it('flags price changes/new charges and annualizes yearly subscriptions once', () => {
-    const rows = [tx({ merchant: recurring.merchant })]
+    const rows = Array.from({ length: 12 }, (_, i) =>
+      tx({
+        id: `subscription-${i}`,
+        merchant: recurring.merchant,
+        date:
+          i < 10
+            ? `2029-${String(i + 1).padStart(2, '0')}-01`
+            : `2030-0${i - 5}-01`,
+        amount: i < 10 ? -100 : -125,
+      }),
+    )
     expect(recurringItems([recurring], rows, today)[0]).toMatchObject({
       flag: 'price-up',
       annualized: 1500,
     })
-    expect(
-      recurringItems([{ ...recurring, recent_avg_amount: -70 }], rows, today)[0]
-        .flag,
-    ).toBe('price-down')
+    const cheaper = rows.map((t, i) => ({ ...t, amount: i < 10 ? -100 : -70 }))
+    expect(recurringItems([recurring], cheaper, today)[0].flag).toBe(
+      'price-down',
+    )
     expect(
       recurringItems(
-        [{ ...recurring, recent_avg_amount: -100, first_seen: '2030-06-01' }],
-        rows,
+        [recurring],
+        [tx({ merchant: recurring.merchant })],
         today,
       )[0].flag,
     ).toBe('new')

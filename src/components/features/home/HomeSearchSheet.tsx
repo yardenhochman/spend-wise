@@ -130,8 +130,8 @@ export default function HomeSearchSheet() {
                             className="flex min-h-16 items-center justify-between gap-3 py-3 focus-visible:outline-2 focus-visible:outline-ring"
                           >
                             <div className="min-w-0">
-                              <p className="text-sm font-medium" dir="auto">
-                                {project.label}
+                              <p className="text-start text-sm font-medium">
+                                <bdi dir="auto">{project.label}</bdi>
                               </p>
                               <p className="mt-0.5 text-xs text-muted-foreground">
                                 {project.status === 'open' ? 'Open' : 'Ended'}

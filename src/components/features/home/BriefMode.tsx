@@ -63,12 +63,12 @@ function NoticeCard({ notice }: { notice: Notice }) {
         <Icon size={14} aria-hidden="true" />
         {presentation.label}
       </div>
-      <h3 className="text-[15px] font-semibold leading-snug" dir="auto">
+      <h3 className="text-[15px] font-semibold leading-snug" dir="ltr">
         {notice.title}
       </h3>
       <p
         className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground"
-        dir="auto"
+        dir="ltr"
       >
         {notice.body}
       </p>

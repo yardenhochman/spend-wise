@@ -3,12 +3,17 @@ import { format, parseISO } from 'date-fns'
 import { match } from 'ts-pattern'
 import { Check, Minus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { confirmHomeObligation, getHomeCommitments } from '@/lib/api'
+import {
+  confirmHomeObligation,
+  dismissHomeObligation,
+  getHomeCommitments,
+} from '@/lib/api'
 import type { CommitmentsResponse, TrailStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { formatILS } from '@/utils/currency'
 import { formatMonthAbbr, formatMonthLabel } from '@/utils/dates'
 import { apiErrorMessage, HomeResource } from './HomeState'
+import { paymentCounts } from './presentation'
 
 function TrailDot({ status, label }: { status: TrailStatus; label: string }) {
   const style = match(status)
@@ -64,6 +69,7 @@ function Commitments({
   data: CommitmentsResponse
   preview: boolean
 }) {
+  const [dismissedIds, setDismissedIds] = useState<string[]>([])
   const [confirmedIds, setConfirmedIds] = useState<string[]>([])
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [confirmationError, setConfirmationError] = useState<{
@@ -71,17 +77,25 @@ function Commitments({
     message: string
   } | null>(null)
   const [announcement, setAnnouncement] = useState('')
-  const currentMonth = format(new Date(), 'yyyy-MM')
+  const currentMonth = data.months.at(-1) ?? format(new Date(), 'yyyy-MM')
   const confirmed = (id: string, existing: boolean) =>
     existing || confirmedIds.includes(id)
-  const counts = { paid: 0, due: 0, late: 0 }
-  for (const obligation of data.obligations) {
-    if (!confirmed(obligation.id, obligation.confirmed)) continue
-    const status = obligation.trail.find(
-      (t) => t.month === currentMonth,
-    )?.status
-    if (status === 'paid' || status === 'due' || status === 'late')
-      counts[status]++
+  const obligations = data.obligations.filter(
+    (o) => !dismissedIds.includes(o.id),
+  )
+  const counts = paymentCounts(obligations, currentMonth)
+  const hasSuggestions = obligations.some((o) => !confirmed(o.id, o.confirmed))
+  async function dismiss(id: string, name: string) {
+    setPendingId(id)
+    setConfirmationError(null)
+    const result = await dismissHomeObligation(id, preview)
+    if (result.isErr())
+      setConfirmationError({ id, message: apiErrorMessage(result.error) })
+    else {
+      setDismissedIds((ids) => [...ids, id])
+      setAnnouncement(`${name} dismissed${preview ? ' in this demo' : ''}.`)
+    }
+    setPendingId(null)
   }
   async function confirm(id: string, name: string) {
     setPendingId(id)
@@ -126,6 +140,11 @@ function Commitments({
             · last 6 months
           </span>
         </h2>
+        {hasSuggestions && (
+          <p className="mt-3 rounded-lg bg-muted/40 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+            These were detected automatically — confirm the ones that are real
+          </p>
+        )}
         <div
           className="mt-4 flex justify-end gap-1.5"
           aria-label="Trail months, oldest to newest"
@@ -140,19 +159,19 @@ function Commitments({
             </span>
           ))}
         </div>
-        {data.obligations.length === 0 && (
+        {obligations.length === 0 && (
           <p className="py-5 text-sm text-muted-foreground">
             No obligations identified yet. Import statements to start building
             your payment history.
           </p>
         )}
         <ul className="divide-y divide-border">
-          {data.obligations.map((item) => (
+          {obligations.map((item) => (
             <li key={item.id} className="py-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium" dir="auto">
-                    {item.name}
+                  <p className="text-start text-sm font-medium">
+                    <bdi dir="auto">{item.name}</bdi>
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                     {item.expectedAmount === null
@@ -186,24 +205,30 @@ function Commitments({
                       ? 'text-destructive'
                       : 'text-muted-foreground',
                   )}
-                  dir="auto"
+                  dir="ltr"
                 >
                   {item.note}
                 </p>
               )}
               {!confirmed(item.id, item.confirmed) && (
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  <span className="rounded border border-dashed border-muted-foreground/60 px-2 py-0.5 text-xs text-muted-foreground">
-                    Suggested
-                  </span>
+                <div className="mt-1 flex items-center gap-1">
                   <Button
-                    variant="outline"
-                    className="min-h-11 px-3 text-xs"
+                    variant="ghost"
+                    className="min-h-11 min-w-11 gap-1 px-2 text-xs text-primary"
                     disabled={pendingId !== null}
                     onClick={() => void confirm(item.id, item.name)}
                     aria-label={`Confirm ${item.name}`}
                   >
-                    {pendingId === item.id ? 'Confirming…' : 'Confirm'}
+                    <Check size={14} aria-hidden="true" /> Confirm
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="min-h-11 min-w-11 gap-1 px-2 text-xs text-muted-foreground"
+                    disabled={pendingId !== null}
+                    onClick={() => void dismiss(item.id, item.name)}
+                    aria-label={`Dismiss ${item.name}`}
+                  >
+                    <X size={14} aria-hidden="true" /> Dismiss
                   </Button>
                 </div>
               )}
@@ -251,9 +276,9 @@ function Commitments({
           return (
             <div key={item.id} className="border-b border-border py-3">
               <div className="flex justify-between gap-3 text-sm">
-                <span className="font-medium" dir="auto">
+                <bdi className="text-start font-medium" dir="auto">
                   {item.name}
-                </span>
+                </bdi>
                 <span className="tabular-nums">
                   {formatILS(item.remaining)} left
                 </span>
@@ -311,8 +336,8 @@ function Commitments({
               className="flex justify-between gap-3 py-3"
             >
               <div className="min-w-0">
-                <p className="text-sm font-medium" dir="auto">
-                  {item.merchant}
+                <p className="text-start text-sm font-medium">
+                  <bdi dir="auto">{item.merchant}</bdi>
                 </p>
                 {item.flag && (
                   <p className="mt-1 text-xs text-muted-foreground">

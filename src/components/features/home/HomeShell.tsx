@@ -28,8 +28,12 @@ export default function HomeShell({
     .with('brief', () => 'Brief')
     .exhaustive()
   return (
-    <div className="home-theme min-h-dvh bg-background text-foreground selection:bg-primary/25">
-      <div className="mx-auto max-w-[480px] px-5 pt-[max(20px,env(safe-area-inset-top))] pb-[calc(106px+env(safe-area-inset-bottom))] sm:px-7 sm:pt-10">
+    <div
+      dir="ltr"
+      className="home-theme min-h-dvh bg-background text-foreground selection:bg-primary/25"
+      style={{ '--home-tab-height': '73px' } as React.CSSProperties}
+    >
+      <div className="mx-auto max-w-[480px] px-5 pt-[max(20px,env(safe-area-inset-top))] sm:px-7 sm:pt-10">
         <header className="mb-6 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
@@ -40,7 +44,14 @@ export default function HomeShell({
           </div>
           <HomeSearchSheet />
         </header>
-        <main id="home-content" key={mode}>
+        <main
+          id="home-content"
+          key={mode}
+          style={{
+            paddingBottom:
+              'calc(var(--home-tab-height) + env(safe-area-inset-bottom, 0px) + 24px)',
+          }}
+        >
           {match(mode)
             .with('runway', () => <RunwayMode />)
             .with('commitments', () => <CommitmentsMode />)

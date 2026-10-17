@@ -1,4 +1,3 @@
-import { Link } from '@tanstack/react-router'
 import { format, parseISO } from 'date-fns'
 import { ArrowDownLeft, ArrowUpRight, Wallet } from 'lucide-react'
 import { getHomeRunway } from '@/lib/api'
@@ -7,31 +6,20 @@ import { cn } from '@/lib/utils'
 import { formatILS } from '@/utils/currency'
 import { HomeResource, signedILS } from './HomeState'
 import RunwayChart from './RunwayChart'
+import { upcomingEvents } from './presentation'
 
 function Runway({ data }: { data: RunwayResponse }) {
-  const events = data.events
-    .filter(
-      (e) =>
-        e.date >= data.asOf &&
-        (!data.nextSalary || e.date <= data.nextSalary.date),
-    )
-    .sort((a, b) => a.date.localeCompare(b.date))
+  const events = upcomingEvents(data)
   return (
     <>
       {data.openingBalance === null ? (
         <section className="space-y-3 rounded-xl border border-border p-5">
           <Wallet className="text-muted-foreground" aria-hidden="true" />
-          <h2 className="text-xl font-semibold">Balances not imported yet</h2>
+          <h2 className="text-xl font-semibold">Balance not available yet</h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Import a statement with account balances to see your cash runway.
-            Upcoming payments are still listed below.
+            Balances arrive with the daily bank import. Upcoming payments are
+            listed below.
           </p>
-          <Link
-            to="/upload"
-            className="inline-flex min-h-11 items-center font-medium text-primary underline underline-offset-4"
-          >
-            Import a statement
-          </Link>
         </section>
       ) : (
         <section aria-label="Household cash forecast">
@@ -118,8 +106,8 @@ function Runway({ data }: { data: RunwayResponse }) {
                   />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium" dir="auto">
-                    {event.label}
+                  <p className="text-start text-sm font-medium">
+                    <bdi dir="auto">{event.label}</bdi>
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {format(parseISO(event.date), 'd MMM')}

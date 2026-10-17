@@ -319,7 +319,7 @@ describe('home signal quality regressions', () => {
     const run = (r: HomeTransaction[]) =>
       buildBrief(today, r, [], [], series, [], emptyRunway, today)
     expect(run(rows).notices[0].title).toBe(
-      'Synthetic category spending changed',
+      '\u2068Synthetic category\u2069 spending changed',
     ) // exactly 30%, despite the amount share
     rows[3].category_name = null
     const suppressed = run(rows)
