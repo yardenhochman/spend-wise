@@ -64,12 +64,8 @@ export function isBuildingFee(tx: HomeTransaction): boolean {
     )
   )
     return true
-  return (
-    /דמי ניהול|property management/i.test(name) &&
-    /housing|home maintenance|דיור|בניין|בנין|building|tower|טאוור/i.test(
-      `${name} ${tx.category_name ?? ''}`,
-    )
-  )
+  // Israeli building management fees are almost always billed as "דמי ניהול".
+  return /דמי ניהול|property management/i.test(name)
 }
 export function stableAmounts(amounts: number[], tolerance = 0.05): boolean {
   if (!amounts.length) return false
