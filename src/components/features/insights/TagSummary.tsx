@@ -6,7 +6,7 @@ import { useViewMode } from '@/lib/view-mode'
 import { formatILS } from '@/utils/currency'
 
 export default function TagSummary() {
-  const { mode } = useViewMode()
+  const { mode, excludedKinds } = useViewMode()
   const [items, setItems] = useState<Summary[]>([])
   const [selected, setSelected] = useState('')
   const [error, setError] = useState('')
@@ -15,7 +15,7 @@ export default function TagSummary() {
     let active = true
     setLoading(true)
     setError('')
-    getTagSummaries({ view_mode: mode }).then(
+    getTagSummaries({ view_mode: mode, excluded_kinds: excludedKinds }).then(
       (result) => {
         if (!active) return
         if (result.isErr()) setError(result.error.message)
@@ -26,7 +26,7 @@ export default function TagSummary() {
     return () => {
       active = false
     }
-  }, [mode])
+  }, [mode, excludedKinds])
   const summary = items.find((t) => t.id === selected) ?? items[0]
   if (loading)
     return (

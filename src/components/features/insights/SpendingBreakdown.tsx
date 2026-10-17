@@ -71,7 +71,7 @@ function shiftMonth(ym: string, delta: number): string {
 
 export default function SpendingBreakdown() {
   const navigate = useNavigate()
-  const { mode } = useViewMode()
+  const { mode, excludedKinds } = useViewMode()
   const [data, setData] = useState<InsightsSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
@@ -140,7 +140,10 @@ export default function SpendingBreakdown() {
 
   useEffect(() => {
     setLoading(true)
-    let params: Record<string, string> = { view_mode: mode }
+    const params: Parameters<typeof getInsightsSummary>[0] = {
+      view_mode: mode,
+      excluded_kinds: excludedKinds,
+    }
     if (period === 'monthly') {
       params.date_from = `${month}-01`
       params.date_to = `${month}-31`
@@ -151,7 +154,7 @@ export default function SpendingBreakdown() {
     getInsightsSummary(params)
       .then(setData)
       .finally(() => setLoading(false))
-  }, [month, year, period, mode])
+  }, [month, year, period, mode, excludedKinds])
 
   if (loading || !data) {
     return <p className="text-gray-40 text-center py-8">Loading insights...</p>
@@ -413,11 +416,13 @@ export default function SpendingBreakdown() {
                     setTxnsLoading(true)
                     setCategoryTxns([])
                     setDrilldownSearch('')
-                    const trendParams: Record<string, string> = {
-                      category_id: cat.category_id ?? '',
-                      granularity: 'month',
-                      view_mode: mode,
-                    }
+                    const trendParams: Parameters<typeof getCategoryTrend>[0] =
+                      {
+                        category_id: cat.category_id ?? '',
+                        granularity: 'month',
+                        view_mode: mode,
+                        excluded_kinds: excludedKinds,
+                      }
                     getCategoryTrend(trendParams).then((r) => {
                       setTrendData(fillMissingMonths(r.points))
                       setTrendAverage(r.average)
@@ -428,6 +433,7 @@ export default function SpendingBreakdown() {
                     getCategoryTransactions({
                       category_id: cat.category_id ?? '',
                       view_mode: mode,
+                      excluded_kinds: excludedKinds,
                     }).then((r) => {
                       setCategoryTxns(r.items)
                       setTxnsLoading(false)
@@ -483,17 +489,23 @@ export default function SpendingBreakdown() {
                             setDrilldownSearch('')
 
                             // Always fetch monthly trend across full time range
-                            const trendParams: Record<string, string> = {
+                            const trendParams: Parameters<
+                              typeof getCategoryTrend
+                            >[0] = {
                               category_id: cat.category_id ?? '',
                               granularity: 'month',
                               view_mode: mode,
+                              excluded_kinds: excludedKinds,
                             }
                             // For yearly view, scope the trend to that year
 
                             // Fetch transactions for the selected period
-                            const txParams: Record<string, string> = {
+                            const txParams: Parameters<
+                              typeof getCategoryTransactions
+                            >[0] = {
                               category_id: cat.category_id ?? '',
                               view_mode: mode,
+                              excluded_kinds: excludedKinds,
                             }
                             if (period === 'monthly') {
                               txParams.date_from = `${month}-01`

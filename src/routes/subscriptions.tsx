@@ -244,7 +244,7 @@ function ActionMenu({
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 function SubscriptionsPage() {
-  const { mode: viewMode } = useViewMode()
+  const { mode: viewMode, excludedKinds } = useViewMode()
   const [recurring, setRecurring] = useState<RecurringMerchant[]>([])
   const [cashAllocations, setCashAllocations] = useState<CashAllocation[]>([])
   const [trends, setTrends] = useState<RecurringTrendsResponse['trends']>({})
@@ -262,7 +262,10 @@ function SubscriptionsPage() {
   useEffect(() => {
     setLoading(true)
     Promise.all([
-      getRecurringMerchants({ view_mode: viewMode }),
+      getRecurringMerchants({
+        view_mode: viewMode,
+        excluded_kinds: excludedKinds,
+      }),
       getCashAllocations(),
       getRecurringTrends(),
       getCategories(),
@@ -278,7 +281,7 @@ function SubscriptionsPage() {
         console.error('Failed to load subscriptions:', err)
         setLoading(false)
       })
-  }, [viewMode])
+  }, [viewMode, excludedKinds])
 
   const mult = annualized ? 12 : 1
   const suffix = annualized ? '/yr' : '/mo'

@@ -9,6 +9,7 @@ import type {
   InvestmentsSummary,
   InsightsSummary,
   PaginatedResponse,
+  ViewExclusion,
   ViewMode,
   CategoryTrendResponse,
   ReviewResponse,
@@ -19,6 +20,20 @@ import type {
 } from './types'
 
 const BASE = '/api'
+
+function setSearchParams(
+  searchParams: URLSearchParams,
+  params: Record<string, unknown>,
+) {
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === '') continue
+    if (Array.isArray(v)) {
+      if (v.length > 0) searchParams.set(k, v.join(','))
+    } else {
+      searchParams.set(k, String(v))
+    }
+  }
+}
 
 // ── Error types ─────────────────────────────────────────────────────────────
 export type ApiError =
@@ -121,11 +136,10 @@ export async function getTransactions(params: {
   date_to?: string
   exclude_internal?: string
   view_mode?: ViewMode
+  excluded_kinds?: ViewExclusion[]
 }): Promise<PaginatedResponse<Transaction>> {
   const searchParams = new URLSearchParams()
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== '') searchParams.set(k, String(v))
-  }
+  setSearchParams(searchParams, params)
   return fetchJson(`/transactions?${searchParams}`)
 }
 
@@ -153,13 +167,10 @@ export async function getInsightsSummary(params?: {
   date_from?: string
   date_to?: string
   view_mode?: ViewMode
+  excluded_kinds?: ViewExclusion[]
 }): Promise<InsightsSummary> {
   const searchParams = new URLSearchParams()
-  if (params) {
-    for (const [k, v] of Object.entries(params)) {
-      if (v) searchParams.set(k, v)
-    }
-  }
+  if (params) setSearchParams(searchParams, params)
   return fetchJson(`/insights/summary?${searchParams}`)
 }
 
@@ -168,21 +179,20 @@ export async function getCategoryTransactions(params: {
   date_from?: string
   date_to?: string
   view_mode?: ViewMode
+  excluded_kinds?: ViewExclusion[]
 }): Promise<{ items: Transaction[] }> {
   const searchParams = new URLSearchParams()
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== '') searchParams.set(k, String(v))
-  }
+  setSearchParams(searchParams, params)
   return fetchJson(`/insights/category-transactions?${searchParams}`)
 }
 
 export async function getMonthlyInsights(params?: {
   year?: string
   view_mode?: ViewMode
+  excluded_kinds?: ViewExclusion[]
 }): Promise<import('./types').MonthlyInsights> {
   const searchParams = new URLSearchParams()
-  if (params?.year) searchParams.set('year', params.year)
-  if (params?.view_mode) searchParams.set('view_mode', params.view_mode)
+  if (params) setSearchParams(searchParams, params)
   return fetchJson(`/insights/monthly?${searchParams}`)
 }
 
@@ -252,15 +262,14 @@ export async function removeTagFromTransaction(
 // ── Review / Suspicious Transactions ─────────────────────────────────────────
 export async function getReviewTransactions(params: {
   view_mode?: ViewMode
+  excluded_kinds?: ViewExclusion[]
   filter?: string
   category_id?: string
   limit?: number
   offset?: number
 }): Promise<ReviewResponse> {
   const searchParams = new URLSearchParams()
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== '') searchParams.set(k, String(v))
-  }
+  setSearchParams(searchParams, params)
   return fetchJson(`/review/suspicious?${searchParams}`)
 }
 
@@ -271,22 +280,22 @@ export async function getCategoryTrend(params: {
   date_to?: string
   granularity?: 'month' | 'day'
   view_mode?: ViewMode
+  excluded_kinds?: ViewExclusion[]
 }): Promise<CategoryTrendResponse> {
   const searchParams = new URLSearchParams()
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== '') searchParams.set(k, String(v))
-  }
+  setSearchParams(searchParams, params)
   return fetchJson(`/insights/category-trend?${searchParams}`)
 }
 
 // ── Recurring Merchants ──────────────────────────────────────────────────────
 export async function getRecurringMerchants(params?: {
   view_mode?: ViewMode
+  excluded_kinds?: ViewExclusion[]
 }): Promise<{
   items: RecurringMerchant[]
 }> {
   const searchParams = new URLSearchParams()
-  if (params?.view_mode) searchParams.set('view_mode', params.view_mode)
+  if (params) setSearchParams(searchParams, params)
   const qs = searchParams.toString()
   return fetchJson(`/recurring${qs ? `?${qs}` : ''}`)
 }
@@ -350,7 +359,7 @@ export function globalSearch(q: string): ResultAsync<SearchResult, ApiError> {
   return safeFetchJson<SearchResult>(`/search?q=${encodeURIComponent(q)}`)
 }
 
-export function getTagSummaries(params: { view_mode: ViewMode }) {
-  const query = new URLSearchParams(params)
+export function getTagSummaries(params: { view_mode:ViewMode;excluded_kinds:ViewExclusion[] }) {
+  const query=new URLSearchParams();setSearchParams(query,params)
   return safeFetchJson<{items:TagSummary[]}>(`/tag-summaries?${query}`)
 }

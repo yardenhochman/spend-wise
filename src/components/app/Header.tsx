@@ -10,15 +10,22 @@ import {
   Home,
   Heart,
   Import,
+  Landmark,
+  Receipt,
 } from 'lucide-react'
 import { useViewMode } from '@/lib/view-mode'
-import type { ViewMode } from '@/lib/types'
+import type { ViewExclusion } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 
-const VIEW_MODES: { value: ViewMode; label: string; icon: typeof Wallet }[] = [
-  { value: 'routine', label: 'Routine', icon: Wallet },
-  { value: 'home', label: 'Home', icon: Home },
+const EXCLUSION_TOGGLES: {
+  value: ViewExclusion
+  label: string
+  icon: typeof Wallet
+}[] = [
   { value: 'wedding', label: 'Wedding', icon: Heart },
+  { value: 'loans', label: 'Loans', icon: Receipt },
+  { value: 'mortgage', label: 'Mortgage', icon: Landmark },
+  { value: 'home', label: 'Home', icon: Home },
 ]
 
 export default function Header({
@@ -26,23 +33,23 @@ export default function Header({
 }: {
   onOpenSearch?: () => void
 }) {
-  const { mode, setMode } = useViewMode()
+  const { excludedKinds, setExcludedKinds, toggleExcludedKind } = useViewMode()
 
   const linkClass =
-    'flex items-center gap-2 px-4 py-2 rounded-[14px] text-sm font-medium transition-colors text-gray-60 hover:text-gray-100 hover:bg-surface-alt'
+    'flex shrink-0 items-center gap-2 rounded-[14px] px-3 py-2 text-sm font-medium text-gray-60 transition-colors hover:bg-surface-alt hover:text-gray-100 sm:px-4'
   const activeClass =
-    'flex items-center gap-2 px-4 py-2 rounded-[14px] text-sm font-bold bg-brand text-white hover:bg-brand-dark transition-colors'
+    'flex shrink-0 items-center gap-2 rounded-[14px] bg-brand px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-dark sm:px-4'
 
   return (
-    <header className="px-6 py-3 flex items-center gap-6 bg-surface border-b border-gray-10 shadow-sm">
+    <header className="sticky top-0 z-40 flex flex-wrap items-center gap-2 border-b border-gray-10 bg-surface/95 px-3 py-2 shadow-sm backdrop-blur sm:px-4 lg:gap-6 lg:px-6">
       <Link
         to="/insights"
-        className="text-xl font-bold tracking-tight mr-4 text-gray-100"
+        className="mr-2 shrink-0 text-lg font-bold tracking-tight text-gray-100 sm:mr-4 sm:text-xl"
       >
         SpendWise
       </Link>
 
-      <nav className="flex items-center gap-1">
+      <nav className="order-3 -mx-1 flex w-full items-center gap-1 overflow-x-auto px-1 pb-1 sm:order-none sm:mx-0 sm:w-auto sm:flex-1 sm:px-0 sm:pb-0">
         <Link
           to="/insights"
           className={linkClass}
@@ -93,8 +100,8 @@ export default function Header({
         </Link>
       </nav>
 
-      {/* Right side: search trigger, import button, view mode switcher */}
-      <div className="ml-auto flex items-center gap-2">
+      {/* Right side: search trigger, import button, cashflow exclusions */}
+      <div className="order-2 ml-auto flex shrink-0 items-center gap-1 sm:order-none sm:gap-2">
         {onOpenSearch && (
           <Button
             variant="ghost"
@@ -118,25 +125,40 @@ export default function Header({
             <Import size={16} />
           </Button>
         </Link>
+      </div>
 
-        <div className="flex items-center bg-surface-alt rounded-[14px] p-0.5 border border-gray-10">
-          {VIEW_MODES.map(({ value, label, icon: Icon }) => (
+      <div className="order-4 flex w-full items-center gap-1 overflow-x-auto rounded-[14px] border border-gray-10 bg-surface-alt p-0.5 sm:order-none sm:w-auto sm:shrink-0">
+        {excludedKinds.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setExcludedKinds([])}
+            className="shrink-0 rounded-[12px] text-xs text-gray-60 hover:text-gray-100"
+            title="Show all cashflow"
+          >
+            All
+          </Button>
+        )}
+        {EXCLUSION_TOGGLES.map(({ value, label, icon: Icon }) => {
+          const isActive = excludedKinds.includes(value)
+          return (
             <Button
               key={value}
-              variant={mode === value ? 'default' : 'ghost'}
+              variant={isActive ? 'default' : 'ghost'}
               size="sm"
-              onClick={() => setMode(value)}
-              className={`gap-1.5 rounded-[12px] text-xs ${
-                mode === value
+              onClick={() => toggleExcludedKind(value)}
+              className={`shrink-0 gap-1.5 rounded-[12px] text-xs ${
+                isActive
                   ? 'bg-brand text-white shadow-sm hover:bg-brand-dark'
                   : 'text-gray-60 hover:text-gray-100'
               }`}
+              title={`${isActive ? 'Show' : 'Hide'} ${label}`}
             >
               <Icon size={14} />
-              <span className="hidden sm:inline">{label}</span>
+              <span>{label}</span>
             </Button>
-          ))}
-        </div>
+          )
+        })}
       </div>
     </header>
   )

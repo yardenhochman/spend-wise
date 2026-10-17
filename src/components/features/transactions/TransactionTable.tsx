@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/table'
 
 export default function TransactionTable() {
-  const { mode } = useViewMode()
+  const { mode, excludedKinds } = useViewMode()
   const navigate = useNavigate()
   const { category_id: urlCategoryId, q: urlQuery, tag_id: urlTagId } = useSearch({
     from: '/transactions',
@@ -94,6 +94,7 @@ export default function TransactionTable() {
       date_to: dateTo || undefined,
       exclude_internal: hideInternal ? '1' : undefined,
       view_mode: mode,
+      excluded_kinds: excludedKinds,
     })
       .then((res) => {
         setTransactions(res.items)
@@ -111,6 +112,7 @@ export default function TransactionTable() {
     dateTo,
     hideInternal,
     mode,
+    excludedKinds,
   ])
 
   const toggleSort = (field: string) => {

@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
 export default function MonthlyDrilldown() {
-  const { mode } = useViewMode()
+  const { mode, excludedKinds } = useViewMode()
   const [data, setData] = useState<MonthlyInsights | null>(null)
   const [loading, setLoading] = useState(true)
   const [year, setYear] = useState<string>('')
@@ -26,10 +26,14 @@ export default function MonthlyDrilldown() {
 
   useEffect(() => {
     setLoading(true)
-    getMonthlyInsights({ year: year || undefined, view_mode: mode })
+    getMonthlyInsights({
+      year: year || undefined,
+      view_mode: mode,
+      excluded_kinds: excludedKinds,
+    })
       .then(setData)
       .finally(() => setLoading(false))
-  }, [year, mode])
+  }, [year, mode, excludedKinds])
 
   const toggleMonth = (month: string) => {
     setExpandedMonth(expandedMonth === month ? null : month)
@@ -57,6 +61,7 @@ export default function MonthlyDrilldown() {
         date_from: `${month}-01`,
         date_to: `${month}-${lastDay}`,
         view_mode: mode,
+        excluded_kinds: excludedKinds,
       })
       setCategoryTxns(res.items)
     } finally {

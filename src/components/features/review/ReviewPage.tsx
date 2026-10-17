@@ -33,7 +33,7 @@ const FLAG_FILTERS = [
 ] as const
 
 export default function ReviewPage() {
-  const { mode } = useViewMode()
+  const { mode, excludedKinds } = useViewMode()
   const navigate = useNavigate()
   const { filter: urlFilter, category_id: urlCategoryId } = useSearch({
     from: '/review',
@@ -63,6 +63,7 @@ export default function ReviewPage() {
     setLoading(true)
     getReviewTransactions({
       view_mode: mode,
+      excluded_kinds: excludedKinds,
       filter: activeFilter,
       category_id: filterCategory || undefined,
       limit,
@@ -74,7 +75,7 @@ export default function ReviewPage() {
         setFlagCounts(res.flag_counts)
       })
       .finally(() => setLoading(false))
-  }, [mode, activeFilter, filterCategory, page])
+  }, [mode, excludedKinds, activeFilter, filterCategory, page])
 
   const setFilter = (f: string) => {
     setPage(0)

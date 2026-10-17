@@ -13,6 +13,7 @@ export interface SpreadTransaction {
 }
 
 export interface SpreadAdjustment {
+  kind: 'expense' | 'income'
   month: string
   amount: number
   category_id: string | null
@@ -38,6 +39,7 @@ export function computeSpreadAdjustments(
 
     // Remove the full amount from the original month
     adjustments.push({
+      kind: tx.amount < 0 ? 'expense' : 'income',
       month: originalMonth,
       amount: -tx.amount,
       category_id: tx.category_id,
@@ -49,6 +51,7 @@ export function computeSpreadAdjustments(
       const d = new Date(year, month - 1 - (n - 1 - i), 1)
       const spreadMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       adjustments.push({
+        kind: tx.amount < 0 ? 'expense' : 'income',
         month: spreadMonth,
         amount: perMonth,
         category_id: tx.category_id,

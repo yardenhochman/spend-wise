@@ -426,6 +426,107 @@ function getHomeInvestmentSummary() {
 }
 
 // ── View Mode Filter ──────────────────────────────────────────────────────
+type ExcludedKind = 'wedding' | 'loans' | 'mortgage' | 'home'
+
+const EXCLUDED_KIND_VALUES = new Set<ExcludedKind>([
+  'wedding',
+  'loans',
+  'mortgage',
+  'home',
+])
+const viewModeSchema = z
+  .enum(['cashflow', 'routine', 'home', 'wedding'])
+  .default('cashflow')
+const excludedKindsSchema = z
+  .array(z.enum(['wedding', 'loans', 'mortgage', 'home']))
+  .default([])
+
+function parseExcludedKinds(value: unknown): ExcludedKind[] {
+  const rawValues = Array.isArray(value)
+    ? value.flatMap((item) => String(item).split(','))
+    : String(value ?? '').split(',')
+
+  return rawValues
+    .map((item) => item.trim())
+    .filter((item): item is ExcludedKind =>
+      EXCLUDED_KIND_VALUES.has(item as ExcludedKind),
+    )
+}
+
+function getCategoryIds(names: string[]): string[] {
+  return names
+    .map((name) => getCategoryId(name))
+    .filter((id): id is string => Boolean(id))
+}
+
+function buildExcludedKindsFilter(
+  excludedKinds: ExcludedKind[],
+  tableAlias: string = 't',
+): Pick<ViewModeFilter, 'sql' | 'params'> {
+  if (excludedKinds.length === 0) return { sql: '', params: [] }
+
+  const a = tableAlias
+  const sqlParts: string[] = []
+  const params: string[] = []
+  const homeRules = expandSqlTemplates(
+    spendWiseConfig.viewModeRules.homeInclude,
+    a,
+  )
+  const weddingRules = expandSqlTemplates(
+    spendWiseConfig.viewModeRules.weddingInclude,
+    a,
+  )
+  const addCategoryExclusion = (names: string[]) => {
+    const ids = getCategoryIds(names)
+    if (ids.length === 0) return
+    sqlParts.push(
+      `(${a}.category_id IS NULL OR ${a}.category_id NOT IN (${ids.map(() => '?').join(',')}))`,
+    )
+    params.push(...ids)
+  }
+  const addRuleExclusion = (rules: string[]) => {
+    sqlParts.push(...rules.map((rule) => `NOT (${rule})`))
+  }
+
+  if (excludedKinds.includes('wedding')) {
+    addCategoryExclusion([
+      'Wedding',
+      'Venue & Catering',
+      'Music & Sound',
+      'Photography',
+      'Wedding Planning',
+    ])
+  }
+
+  if (excludedKinds.includes('loans')) {
+    addCategoryExclusion(['Wedding Loan', 'Home Loans'])
+    addRuleExclusion([
+      ...homeRules.filter((rule) => !rule.includes('למשכנת')),
+      ...weddingRules,
+    ])
+  }
+
+  if (excludedKinds.includes('mortgage')) {
+    addCategoryExclusion(['Mortgage'])
+    addRuleExclusion(homeRules.filter((rule) => rule.includes('למשכנת')))
+  }
+
+  if (excludedKinds.includes('home')) {
+    addCategoryExclusion([
+      'Home Purchase',
+      'Property Price',
+      'Purchase Tax',
+      'Closing Costs',
+      'Consulting',
+    ])
+  }
+
+  return {
+    sql: sqlParts.length ? `AND ${sqlParts.join(' AND ')}` : '',
+    params,
+  }
+}
+
 function buildViewModeFilter(
   mode: string,
   tableAlias: string = 't',
@@ -444,6 +545,14 @@ function buildViewModeFilter(
     rules.map((rule) => `(${rule})`).join(' OR ')
   const excludeRulesSql = (rules: string[]): string =>
     rules.map((rule) => `NOT (${rule})`).join(' AND ')
+
+  if (mode === 'cashflow') {
+    return {
+      sql: '',
+      params: [],
+      includeInternal: false,
+    }
+  }
 
   if (mode === 'home') {
     const homeId = getCategoryId('Home Purchase')
@@ -511,6 +620,20 @@ function buildViewModeFilter(
         : `AND (${a}.category_id IS NULL OR ${a}.category_id NOT IN (${excludeIds.map(() => '?').join(',')}))`,
     params: excludeIds,
     includeInternal: false,
+  }
+}
+
+function buildFinancialFilter(
+  mode: string,
+  excludedKinds: ExcludedKind[] = [],
+  tableAlias: string = 't',
+): ViewModeFilter {
+  const viewMode = buildViewModeFilter(mode, tableAlias)
+  const exclusions = buildExcludedKindsFilter(excludedKinds, tableAlias)
+  return {
+    sql: [viewMode.sql, exclusions.sql].filter(Boolean).join(' '),
+    params: [...viewMode.params, ...exclusions.params],
+    includeInternal: viewMode.includeInternal,
   }
 }
 
@@ -847,7 +970,7 @@ app.get('/api/tags', (_req: Request, res: Response) => {
 })
 
 app.get('/api/tag-summaries', (req: Request, res: Response) => {
-  const scope = buildViewModeFilter((req.query.view_mode as string) || 'routine')
+  const scope = buildFinancialFilter((req.query.view_mode as string) || 'cashflow', parseExcludedKinds(req.query.excluded_kinds))
   const tags = db.prepare(`SELECT tags.*, p.start_date,p.end_date,p.review_note FROM tags LEFT JOIN tag_profiles p ON p.tag_id=tags.id ORDER BY p.start_date IS NULL, tags.name`).all() as (TagRow & { start_date:string|null;end_date:string|null;review_note:string|null })[]
   const items=tags.map(tag=>{
     const rows=db.prepare(`SELECT t.amount,c.name AS category_name,v.valuation_status FROM transactions t JOIN transaction_tags tt ON tt.transaction_id=t.id LEFT JOIN categories c ON c.id=t.category_id LEFT JOIN transaction_valuations v ON v.transaction_id=t.id WHERE tt.tag_id=? AND t.is_internal=0 ${scope.sql}`).all(tag.id,...scope.params) as TaggedAmount[]
@@ -1037,8 +1160,9 @@ app.get('/api/transactions', (req: Request, res: Response) => {
 
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : 'WHERE 1=1'
 
-  const viewMode = buildViewModeFilter(
-    (req.query.view_mode as string) || 'routine',
+  const viewMode = buildFinancialFilter(
+    (req.query.view_mode as string) || 'cashflow',
+    parseExcludedKinds(req.query.excluded_kinds),
   )
 
   const total = (
@@ -1331,10 +1455,21 @@ function querySpreadTransactions(
     .all(...allParams) as SpreadTransaction[]
 }
 
+function spreadAdjustmentInDateRange(
+  month: string,
+  dateFrom?: string,
+  dateTo?: string,
+): boolean {
+  if (dateFrom && `${month}-31` < dateFrom) return false
+  if (dateTo && `${month}-01` > dateTo) return false
+  return true
+}
+
 // ── Insights ────────────────────────────────────────────────────────────────
 app.get('/api/insights/summary', (req: Request, res: Response) => {
-  const viewMode = buildViewModeFilter(
-    (req.query.view_mode as string) || 'routine',
+  const viewMode = buildFinancialFilter(
+    (req.query.view_mode as string) || 'cashflow',
+    parseExcludedKinds(req.query.excluded_kinds),
   )
   const where: string[] = []
   const params: string[] = []
@@ -1356,8 +1491,6 @@ app.get('/api/insights/summary', (req: Request, res: Response) => {
     params.push(dateTo)
   }
 
-  // Non-spread transactions use the normal WHERE; spread txns handled separately
-  where.push('t.spread_months IS NULL')
   const insightWhere = where.length
     ? `WHERE ${where.join(' AND ')} ${viewMode.sql}`
     : `WHERE 1=1 ${viewMode.sql}`
@@ -1371,6 +1504,10 @@ app.get('/api/insights/summary', (req: Request, res: Response) => {
       FROM transactions t ${insightWhere}`,
     )
     .get(...allParams) as SummaryTotals | undefined
+  const mutableTotals = {
+    spend: totals?.spend ?? 0,
+    income: totals?.income ?? 0,
+  }
 
   // 1b. Include spending_type and category_group in by_category query
   const byCategory = db
@@ -1406,28 +1543,27 @@ app.get('/api/insights/summary', (req: Request, res: Response) => {
     )
     .all(...allParams) as TopMerchant[]
 
-  // ── Spread: include spread transactions at their full amounts in totals ──
-  const spreadTxns = querySpreadTransactions(viewMode)
-
-  // Merge spread transactions into totals and by_category using their ORIGINAL amounts
-  // (spread only redistributes across months — the total per category stays the same)
-  for (const tx of spreadTxns) {
+  // Spread adjustments redistribute payments inside the requested date range.
+  const spreadTxns = dateFrom || dateTo ? querySpreadTransactions(viewMode) : []
+  const spreadAdjs = computeSpreadAdjustments(spreadTxns).filter((adj) =>
+    spreadAdjustmentInDateRange(adj.month, dateFrom, dateTo),
+  )
+  for (const adj of spreadAdjs) {
     // Totals
-    if (tx.amount < 0) totals!.spend = (totals?.spend ?? 0) + tx.amount
-    else totals!.income = (totals?.income ?? 0) + tx.amount
+    if (adj.kind === 'expense') mutableTotals.spend += adj.amount
+    else mutableTotals.income += adj.amount
 
-    // By category — add raw amount (not spread)
-    const existing = byCategory.find((c) => c.category_id === tx.category_id)
+    // By category
+    const existing = byCategory.find((c) => c.category_id === adj.category_id)
     if (existing) {
-      existing.total += tx.amount
-      existing.count += 1
+      existing.total += adj.amount
     } else {
-      const catRow = tx.category_id
+      const catRow = adj.category_id
         ? (db
             .prepare(
               'SELECT name, spending_type, category_group FROM categories WHERE id = ?',
             )
-            .get(tx.category_id) as
+            .get(adj.category_id) as
             | {
                 name: string
                 spending_type: string | null
@@ -1436,10 +1572,10 @@ app.get('/api/insights/summary', (req: Request, res: Response) => {
             | undefined)
         : undefined
       byCategory.push({
-        category_id: tx.category_id,
+        category_id: adj.category_id,
         category_name: catRow?.name ?? null,
-        total: tx.amount,
-        count: 1,
+        total: adj.amount,
+        count: 0,
         spending_type: catRow?.spending_type,
         category_group: catRow?.category_group,
       })
@@ -1528,19 +1664,19 @@ app.get('/api/insights/summary', (req: Request, res: Response) => {
     )
     .all(...allParams) as SpendingTypeTotal[]
 
-  // Add spread transactions to spending type totals
-  for (const tx of spreadTxns) {
-    if (tx.amount >= 0) continue
-    const catRow = tx.category_id
+  // Add spread adjustments to spending type totals
+  for (const adj of spreadAdjs) {
+    if (adj.kind !== 'expense') continue
+    const catRow = adj.category_id
       ? (db
           .prepare('SELECT spending_type FROM categories WHERE id = ?')
-          .get(tx.category_id) as { spending_type: string | null } | undefined)
+          .get(adj.category_id) as { spending_type: string | null } | undefined)
       : undefined
     const st = catRow?.spending_type
     if (st && ['needs', 'wants', 'savings'].includes(st)) {
       const existing = spendingTypeRows.find((r) => r.spending_type === st)
-      if (existing) existing.total += tx.amount
-      else spendingTypeRows.push({ spending_type: st, total: tx.amount })
+      if (existing) existing.total += adj.amount
+      else spendingTypeRows.push({ spending_type: st, total: adj.amount })
     }
   }
 
@@ -1665,8 +1801,8 @@ app.get('/api/insights/summary', (req: Request, res: Response) => {
     .slice(0, 3)
 
   res.json({
-    total_spend: Math.abs(totals?.spend ?? 0),
-    total_income: totals?.income ?? 0,
+    total_spend: Math.abs(mutableTotals.spend ?? 0),
+    total_income: mutableTotals.income ?? 0,
     by_category: byCategoryEnriched,
     top_merchants: topMerchants,
     by_spending_type: bySpendingType,
@@ -1700,8 +1836,9 @@ app.get(
       params.push(req.query.date_to as string)
     }
 
-    const viewMode = buildViewModeFilter(
-      (req.query.view_mode as string) || 'routine',
+    const viewMode = buildFinancialFilter(
+      (req.query.view_mode as string) || 'cashflow',
+      parseExcludedKinds(req.query.excluded_kinds),
     )
     const whereSql = `WHERE ${where.join(' AND ')} ${viewMode.sql}`
     const allParams = [...params, ...viewMode.params]
@@ -1712,7 +1849,7 @@ app.get(
        FROM transactions t
        LEFT JOIN categories c ON c.id = t.category_id
        ${whereSql}
-       ORDER BY t.date DESC
+       ORDER BY ABS(t.amount) DESC, t.date DESC
        LIMIT 500`,
       )
       .all(...allParams)
@@ -1729,8 +1866,9 @@ app.get(
 
 // ── Monthly summary with category breakdown ─────────────────────────────────
 app.get('/api/insights/monthly', (req: Request, res: Response) => {
-  const viewMode = buildViewModeFilter(
-    (req.query.view_mode as string) || 'routine',
+  const viewMode = buildFinancialFilter(
+    (req.query.view_mode as string) || 'cashflow',
+    parseExcludedKinds(req.query.excluded_kinds),
   )
   const where: string[] = []
   const params: string[] = []
@@ -1744,7 +1882,6 @@ app.get('/api/insights/monthly', (req: Request, res: Response) => {
     params.push(req.query.year as string)
   }
 
-  where.push('t.spread_months IS NULL')
   const monthlyWhere = where.length
     ? `WHERE ${where.join(' AND ')} ${viewMode.sql}`
     : `WHERE 1=1 ${viewMode.sql}`
@@ -1797,7 +1934,7 @@ app.get('/api/insights/monthly', (req: Request, res: Response) => {
       monthMap.set(adj.month, row)
       months.push(row)
     }
-    if (adj.amount < 0) row.spend = (row.spend ?? 0) + adj.amount
+    if (adj.kind === 'expense') row.spend = (row.spend ?? 0) + adj.amount
     else row.income = (row.income ?? 0) + adj.amount
   }
   months.sort((a, b) => b.month.localeCompare(a.month))
@@ -1858,8 +1995,9 @@ app.get('/api/insights/category-trend', (req: Request, res: Response) => {
   const dateFrom = req.query.date_from as string | undefined
   const dateTo = req.query.date_to as string | undefined
   const granularity = req.query.granularity === 'day' ? 'day' : 'month'
-  const viewMode = buildViewModeFilter(
-    (req.query.view_mode as string) || 'routine',
+  const viewMode = buildFinancialFilter(
+    (req.query.view_mode as string) || 'cashflow',
+    parseExcludedKinds(req.query.excluded_kinds),
   )
 
   const where: string[] = ['t.is_internal = 0']
@@ -1881,7 +2019,6 @@ app.get('/api/insights/category-trend', (req: Request, res: Response) => {
     params.push(dateTo)
   }
 
-  where.push('t.spread_months IS NULL')
   const whereSql = `WHERE ${where.join(' AND ')} ${viewMode.sql}`
   const allParams = [...params, ...viewMode.params]
 
@@ -1899,11 +2036,13 @@ app.get('/api/insights/category-trend', (req: Request, res: Response) => {
 
   // ── Spread adjustments for category-trend ───────────────────────────────
   if (granularity === 'month') {
-    const spreadExtra: string[] = []
+    const spreadExtra: string[] = ['t.amount < 0']
     const spreadParams: (string | number | null)[] = []
     if (categoryId) {
       spreadExtra.push('t.category_id = ?')
       spreadParams.push(categoryId)
+    } else {
+      spreadExtra.push('t.category_id IS NULL')
     }
     const spreadTxns = querySpreadTransactions(
       viewMode,
@@ -1919,9 +2058,8 @@ app.get('/api/insights/category-trend', (req: Request, res: Response) => {
       if (dateTo && month + '-01' > dateTo) continue
       const existing = rowMap.get(month)
       if (existing) {
-        // delta is negative (expense), total is absolute
-        existing.total += Math.abs(delta)
-        // Adjust: original removal makes total go down, spread portions go up
+        // Signed expense deltas reverse the payment before adding allocations.
+        existing.total -= delta
       } else if (delta < 0) {
         // Only add months with expense spread
         const newRow = { period: month, total: Math.abs(delta) }
@@ -1956,7 +2094,7 @@ app.get('/api/insights/category-trend', (req: Request, res: Response) => {
 app.get('/api/analysis/report', (req: Request, res: Response) => {
   const report = generateAnalysisReport(
     undefined,
-    (req.query.view_mode as string) || 'routine',
+    (req.query.view_mode as string) || 'cashflow',
   )
   res.type('text/markdown').send(report)
 })
@@ -1978,7 +2116,7 @@ app.post('/api/analysis/save', (req: Request, res: Response) => {
 
 function generateAnalysisReport(
   additionalNotes?: string,
-  viewModeParam: string = 'routine',
+  viewModeParam: string = 'cashflow',
 ): string {
   const viewMode = buildViewModeFilter(viewModeParam)
   const internalFilter = viewMode.includeInternal ? '' : 'AND t.is_internal = 0'
@@ -2169,8 +2307,12 @@ function generateAnalysisReport(
 
 // ── Recurring Merchants ──────────────────────────────────────────────────────
 app.get('/api/recurring', (req: Request, res: Response) => {
-  const mode = (req.query.view_mode as string) || 'routine'
-  const vmf = buildViewModeFilter(mode, 't')
+  const mode = (req.query.view_mode as string) || 'cashflow'
+  const vmf = buildFinancialFilter(
+    mode,
+    parseExcludedKinds(req.query.excluded_kinds),
+    't',
+  )
 
   // Compute a cutoff date for "recent" average (last 3 months)
   const recentCutoff = new Date()
@@ -2523,7 +2665,8 @@ const appRouter = router({
           date_from: z.string().optional(),
           date_to: z.string().optional(),
           exclude_internal: z.boolean().default(false),
-          view_mode: z.enum(['routine', 'home', 'wedding']).default('routine'),
+          view_mode: viewModeSchema,
+          excluded_kinds: excludedKindsSchema,
         }),
       )
       .query(({ input }) => {
@@ -2562,7 +2705,10 @@ const appRouter = router({
         const whereSql = where.length
           ? `WHERE ${where.join(' AND ')}`
           : 'WHERE 1=1'
-        const viewMode = buildViewModeFilter(input.view_mode)
+        const viewMode = buildFinancialFilter(
+          input.view_mode,
+          input.excluded_kinds,
+        )
 
         const total = (
           db
@@ -2757,13 +2903,17 @@ const appRouter = router({
     summary: publicProcedure
       .input(
         z.object({
-          view_mode: z.enum(['routine', 'home', 'wedding']).default('routine'),
+          view_mode: viewModeSchema,
+          excluded_kinds: excludedKindsSchema,
           date_from: z.string().optional(),
           date_to: z.string().optional(),
         }),
       )
       .query(({ input }) => {
-        const viewMode = buildViewModeFilter(input.view_mode)
+        const viewMode = buildFinancialFilter(
+          input.view_mode,
+          input.excluded_kinds,
+        )
         const where: string[] = []
         const params: string[] = []
 
@@ -2814,7 +2964,8 @@ const appRouter = router({
           category_id: z.string().optional(),
           date_from: z.string().optional(),
           date_to: z.string().optional(),
-          view_mode: z.enum(['routine', 'home', 'wedding']).default('routine'),
+          view_mode: viewModeSchema,
+          excluded_kinds: excludedKindsSchema,
         }),
       )
       .query(({ input }) => {
@@ -2836,7 +2987,10 @@ const appRouter = router({
           params.push(input.date_to)
         }
 
-        const viewMode = buildViewModeFilter(input.view_mode)
+        const viewMode = buildFinancialFilter(
+          input.view_mode,
+          input.excluded_kinds,
+        )
         const whereSql = `WHERE ${where.join(' AND ')} ${viewMode.sql}`
         const allParams = [...params, ...viewMode.params]
 
@@ -2852,12 +3006,16 @@ const appRouter = router({
     monthly: publicProcedure
       .input(
         z.object({
-          view_mode: z.enum(['routine', 'home', 'wedding']).default('routine'),
+          view_mode: viewModeSchema,
+          excluded_kinds: excludedKindsSchema,
           year: z.string().optional(),
         }),
       )
       .query(({ input }) => {
-        const viewMode = buildViewModeFilter(input.view_mode)
+        const viewMode = buildFinancialFilter(
+          input.view_mode,
+          input.excluded_kinds,
+        )
         const where: string[] = []
         const params: string[] = []
 
@@ -2914,11 +3072,15 @@ const appRouter = router({
           date_from: z.string().optional(),
           date_to: z.string().optional(),
           granularity: z.enum(['day', 'month']).default('month'),
-          view_mode: z.enum(['routine', 'home', 'wedding']).default('routine'),
+          view_mode: viewModeSchema,
+          excluded_kinds: excludedKindsSchema,
         }),
       )
       .query(({ input }) => {
-        const viewMode = buildViewModeFilter(input.view_mode)
+        const viewMode = buildFinancialFilter(
+          input.view_mode,
+          input.excluded_kinds,
+        )
         const where: string[] = ['t.is_internal = 0']
         const params: string[] = []
 
@@ -2957,7 +3119,7 @@ const appRouter = router({
     report: publicProcedure
       .input(
         z.object({
-          view_mode: z.enum(['routine', 'home', 'wedding']).default('routine'),
+          view_mode: viewModeSchema,
         }),
       )
       .query(({ input }) => {
@@ -2987,8 +3149,9 @@ app.use(
 
 // ── Review: Suspicious Transactions ─────────────────────────────────────────
 app.get('/api/review/suspicious', (req: Request, res: Response) => {
-  const viewMode = buildViewModeFilter(
-    (req.query.view_mode as string) || 'routine',
+  const viewMode = buildFinancialFilter(
+    (req.query.view_mode as string) || 'cashflow',
+    parseExcludedKinds(req.query.excluded_kinds),
   )
   const filterFlag = (req.query.filter as string) || 'all'
   const categoryFilter = req.query.category_id as string | undefined

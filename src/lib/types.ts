@@ -1,4 +1,5 @@
-export type ViewMode = 'routine' | 'home' | 'wedding'
+export type ViewMode = 'cashflow' | 'routine' | 'home' | 'wedding'
+export type ViewExclusion = 'wedding' | 'loans' | 'mortgage' | 'home'
 
 export interface Tag {
   id: string
