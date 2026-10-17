@@ -14,7 +14,8 @@
     "typecheck:server": "tsc --project server/tsconfig.server.json --noEmit",
     "export:sheets": "tsx server/export-sheets.ts",
     "import:bank-scraper": "tsx server/import-bank-scraper.ts",
-    "import:leumi-cards": "tsx server/import-leumi-cards.ts"
+    "import:leumi-cards": "tsx server/import-leumi-cards.ts",
+    "import:leumi-mortgages": "tsx server/import-leumi-mortgages.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
