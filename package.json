@@ -41,6 +41,7 @@
     "drizzle-orm": "^0.45.1",
     "express": "^4.21.2",
     "googleapis": "^171.4.0",
+    "israeli-bank-scrapers": "^6.7.5",
     "lucide-react": "^0.561.0",
     "multer": "^1.4.5-lts.1",
     "neverthrow": "^8.2.0",
@@ -70,16 +71,11 @@
     "jsdom": "^27.0.0",
     "oxfmt": "^0.35.0",
     "oxlint": "^1.50.0",
+    "puppeteer": "24.40.0",
     "tsx": "^4.21.0",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
     "vitest": "^3.0.5",
     "web-vitals": "^5.1.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "better-sqlite3",
-      "esbuild"
-    ]
   }
 }
