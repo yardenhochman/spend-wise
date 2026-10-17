@@ -16,3 +16,6 @@ todos.json
 private/
 .vscode/
 .cta.json
+
+# Local recovery snapshots may contain financial data.
+.restore-backups/

@@ -44,6 +44,12 @@ Currently supported:
 - Leumi bank statement PDFs
 - Leumi credit card PDFs
 - Interactive Brokers Flex XML
+- Leumi live bank scrape via `israeli-bank-scrapers`
+- Leumi CardsWorld live scrape
+- Leumi mortgage snapshot scrape
+
+Live imports use local secrets from `.env` and write only to local
+SQLite/private files. See the financial refresh runbook for required environment variables.
 
 ## Local Data
 
@@ -51,6 +57,7 @@ Everything runs locally by default.
 
 - Database: `./data/spend-wise.sqlite`
 - Schema: `./server/db/sqlite-schema.sql`
+- Private snapshots/status: `./private/`
 
 Nothing in this repo includes your personal transaction data unless you add it yourself locally.
 
@@ -86,9 +93,27 @@ pnpm run dev
 pnpm run dev:server
 pnpm run build
 pnpm run test
+pnpm run import:bank-scraper -- --from 2026-03-01 --write
+pnpm run import:leumi-cards -- --from 2025-06-01 --write
+pnpm run import:leumi-mortgages -- --write
+pnpm run refresh:financial-state -- --stale-only
 pnpm exec tsc --noEmit -p tsconfig.json
 pnpm exec tsc --project server/tsconfig.server.json --noEmit
 ```
+
+## Automated Refresh
+
+`pnpm run refresh:financial-state -- --stale-only` is the main entry point for
+keeping the local financial state fresh. It checks
+`private/financial-refresh-state.json`, skips fresh sources, and refreshes stale
+Leumi bank, card, and mortgage sources.
+
+## Private remote access
+
+Configure your own private VPN or Tailscale Serve mapping to the frontend port.
+Set `SPENDWISE_ALLOWED_HOSTS` to a comma-separated list of the hostnames you use
+before starting Vite. Share the URL only with authorized household devices.
+Keep machine-specific URLs, paths and scheduling instructions in `private/docs/`.
 
 ## Notes
 
@@ -96,3 +121,5 @@ pnpm exec tsc --project server/tsconfig.server.json --noEmit
 - The backend runs on port `4000`
 - The frontend proxies `/api` to the backend in development
 - Google Sheets export is optional and requires local `gcloud` auth
+- Do not commit `data/`, `.env`, or `private/`; they contain local financial
+  state, raw snapshots, or secrets.

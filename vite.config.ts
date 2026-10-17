@@ -14,6 +14,10 @@ const config = defineConfig({
     },
   },
   server: {
+    allowedHosts: (process.env.SPENDWISE_ALLOWED_HOSTS ?? '')
+      .split(',')
+      .map((host) => host.trim())
+      .filter(Boolean),
     proxy: {
       '/api': 'http://localhost:4000',
     },
