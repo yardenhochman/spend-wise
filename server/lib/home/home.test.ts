@@ -213,16 +213,16 @@ describe('obligations', () => {
         .status,
     ).toBe('paid')
     const mismatch = obligationTrail(
-      o,
+      { ...o, confirmed: true },
       [tx({ amount: -150 })],
       ['2030-06'],
       today,
     )
     expect(mismatch.trail[0]).toMatchObject({
-      status: 'unconfirmed',
+      status: 'late',
       amount: 150,
     })
-    expect(mismatch.note).toContain('50 ILS')
+    expect(mismatch.note).toContain('₪50')
     expect(matchesObligation(o, tx({ is_internal: 1 }))).toBe(false)
   })
   it('respects recurrence anchors, irregular payments, month-end due dates and paid projection exclusion', () => {
@@ -264,7 +264,7 @@ describe('obligations', () => {
   it('uses normalized mortgage helpers without exposing identity and does not invent missing amounts', () => {
     const s = snapshot()
     expect(mortgageObligation(s, today)[0]).toMatchObject({
-      name: 'Mortgage',
+      name: 'Mortgage 1',
       expectedAmount: 200,
       confirmed: false,
     })
@@ -461,7 +461,12 @@ describe('deterministic brief and recurring adapter', () => {
   ].map((m, i) => tx({ id: String(i + 1), date: m + '-10' }))
   it('emits stable category, mismatch, recurring, ended-project, low-balance and stale notices with standalone prompts', () => {
     const obligations = [
-      obligationTrail(obligation(), [tx({ amount: -150 })], ['2030-06'], today),
+      obligationTrail(
+        obligation({ confirmed: true }),
+        [tx({ amount: -150 })],
+        ['2030-06'],
+        today,
+      ),
     ]
     const rec = recurringItems(
       [recurring],
@@ -489,7 +494,7 @@ describe('deterministic brief and recurring adapter', () => {
       '2030-06-01T00:00:00Z',
     )
     expect(brief.weekOf).toBe('2030-06-17')
-    expect(brief.notices).toHaveLength(6)
+    expect(brief.notices).toHaveLength(5)
     expect(brief).toEqual(
       buildBrief(
         today,
@@ -512,8 +517,17 @@ describe('deterministic brief and recurring adapter', () => {
   it('guards category drift when uncategorized coverage is poor or six months unavailable', () => {
     const poor = rows.map((t) => ({ ...t, category_name: null }))
     expect(
-      buildBrief(today, poor, [], [], series, [], runway, '2030-06-18').notices,
-    ).toEqual([])
+      buildBrief(
+        today,
+        poor,
+        [],
+        [],
+        series,
+        [],
+        runway,
+        '2030-06-18',
+      ).notices.map((n) => n.title),
+    ).toEqual(['100% of recent transactions are uncategorized'])
     expect(
       buildBrief(
         today,

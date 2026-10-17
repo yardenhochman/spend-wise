@@ -13,6 +13,7 @@ export interface HomeTransaction {
   id: string
   date: string
   merchant: string
+  display_name?: string
   amount: number
   notes: string | null
   account_id: string
@@ -33,6 +34,7 @@ export interface Obligation {
   confirmed: boolean
   anchorMonth: string
   tolerance: number
+  paymentIds?: string[]
 }
 export interface Event {
   date: string

@@ -8,8 +8,9 @@ import { summarizeTaggedAmounts, type TaggedAmount } from '../tag-summary.js'
 import { latestBalances } from './balances.js'
 import { buildBrief, recurringItems } from './brief.js'
 import { addDays, monthsThrough, monthOffset, round } from './dates.js'
-import { householdTransaction } from './household.js'
+import { householdTransaction, isChecking } from './household.js'
 import {
+  assignPayments,
   detectObligations,
   mortgageObligation,
   mortgageRepayments,
@@ -17,6 +18,7 @@ import {
   obligationTrail,
 } from './obligations.js'
 import { buildRunway } from './runway.js'
+import { cardIssuer, displayName, type MerchantAlias } from './labels.js'
 import { cardSettlementEvents, salaryEvents } from './settlements.js'
 import type {
   Balance,
@@ -90,13 +92,20 @@ export function storedObligations(db: Database.Database): {
 export function homeContext(deps: HomeDeps) {
   const { db, config } = deps
   const today = deps.today()
+  const aliases = db
+    .prepare(
+      'SELECT raw_pattern,canonical_name,match_type FROM merchant_aliases ORDER BY length(raw_pattern) DESC,raw_pattern',
+    )
+    .all() as MerchantAlias[]
   const all = (
     db
       .prepare(
         'SELECT t.*,a.account_label,a.bank_name,c.name AS category_name FROM transactions t JOIN accounts a ON a.id=t.account_id LEFT JOIN categories c ON c.id=t.category_id WHERE t.date<=? ORDER BY t.date,t.id',
       )
       .all(today) as HomeTransaction[]
-  ).filter((t) => householdTransaction(t, config))
+  )
+    .filter((t) => householdTransaction(t, config))
+    .map((t) => ({ ...t, display_name: displayName(t.merchant, aliases) }))
   const routine = deps.routineFilter()
   const allowedIds = new Set(
     (
@@ -107,29 +116,42 @@ export function homeContext(deps: HomeDeps) {
         .all(...routine.params) as { id: string }[]
     ).map((t) => t.id),
   )
-  const rows = all.filter((t) => allowedIds.has(t.id))
+  const rows = all.filter(
+    (t) => allowedIds.has(t.id) && !(isChecking(t) && cardIssuer(t.merchant)),
+  )
   const ids = all.map((t) => t.id)
   const scope: ViewModeFilter = {
     sql: `${routine.sql} AND t.id IN (SELECT value FROM json_each(?))`,
-    params: [...routine.params, JSON.stringify(ids)],
+    params: [...routine.params, JSON.stringify(rows.map((t) => t.id))],
     includeInternal: false,
   }
   const mortgage = deps.mortgage()
   const stored = storedObligations(db)
+  const mortgages = assignPayments(mortgageObligation(mortgage, today), all)
+  const mortgagePayments = new Set(mortgages.flatMap((o) => o.paymentIds ?? []))
   const candidates = [
-    ...detectObligations(rows, today),
-    ...mortgageObligation(mortgage, today),
-  ]
-  const obligations = [
-    ...stored.obligations,
-    ...candidates.filter(
-      (o) =>
-        !stored.deleted.includes(o.id) &&
-        !stored.obligations.some(
-          (s) => s.id === o.id || s.matchPattern === o.matchPattern,
-        ),
+    ...detectObligations(
+      rows.filter((t) => !mortgagePayments.has(t.id)),
+      today,
+      config?.obligationMinimum ?? 100,
     ),
+    ...mortgages,
   ]
+  const obligations = assignPayments(
+    [
+      ...stored.obligations,
+      ...candidates.filter(
+        (o) =>
+          !stored.deleted.includes(o.id) &&
+          !stored.obligations.some(
+            (s) =>
+              s.id === o.id ||
+              (o.kind !== 'mortgage' && s.matchPattern === o.matchPattern),
+          ),
+      ),
+    ].filter((o) => !cardIssuer(o.matchPattern) && !cardIssuer(o.name)),
+    all,
+  )
   const importRow = db
     .prepare(
       `SELECT MAX(f.imported_at) AS date FROM statement_files f JOIN transactions t ON t.source_file_id=f.id WHERE f.status='completed' AND t.id IN (SELECT value FROM json_each(?))`,
@@ -163,10 +185,7 @@ export function homeRunway(deps: HomeDeps, ctx: HomeContext, count: number) {
     warnings.push('Household account allowlist is not configured')
   if (
     !ctx.all.some(
-      (t) =>
-        t.is_internal &&
-        t.amount < 0 &&
-        /ויזה|visa|card|ישראכרט/i.test(t.merchant),
+      (t) => isChecking(t) && t.amount < 0 && !!cardIssuer(t.merchant),
     )
   )
     warnings.push(

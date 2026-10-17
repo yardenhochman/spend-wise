@@ -5,6 +5,7 @@ export interface HouseholdConfig {
   accountNumbers: string[]
   legacyAccountIds?: string[]
   runwayFloor?: number
+  obligationMinimum?: number
   graceDays?: number
 }
 

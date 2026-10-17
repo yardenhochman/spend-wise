@@ -317,3 +317,118 @@ describe('home route contract', () => {
     )
   })
 })
+
+describe('home signal quality integration', () => {
+  it('matches routine household coverage to a direct SQL count and resolves aliases without GET writes', () => {
+    db.exec(
+      "INSERT INTO merchant_aliases VALUES ('synthetic-alias','Synthetic raw','Synthetic display','contains')",
+    )
+    for (const m of ['2030-03', '2030-04', '2030-05']) {
+      insert('known' + m, m + '-10', 'Synthetic raw order', -900)
+      insert('unknown' + m, m + '-12', 'Synthetic unknown', -1)
+      db.prepare('UPDATE transactions SET category_id=NULL WHERE id=?').run(
+        'unknown' + m,
+      )
+      insert('card' + m, m + '-10', 'Synthetic Visa', -300)
+      insert(
+        'committee' + m,
+        m + '-10',
+        'Synthetic committee',
+        -100,
+        'committee',
+      )
+      insert(
+        'internal' + m,
+        m + '-10',
+        'Synthetic transfer',
+        -100,
+        'checking',
+        'utilities',
+        null,
+        1,
+      )
+      insert(
+        'excluded' + m,
+        m + '-10',
+        'Synthetic project',
+        -100,
+        'checking',
+        'wedding',
+      )
+      insert('income' + m, m + '-10', 'Synthetic income', 100)
+    }
+    insert('current', '2030-06-01', 'Synthetic raw order')
+    insert('old', '2030-02-28', 'Synthetic raw order')
+    const direct = db
+      .prepare(
+        "SELECT CAST(SUM(category_id IS NULL) AS REAL)/COUNT(*) AS share FROM transactions WHERE account_id='checking' AND date>='2030-03-01' AND date<'2030-06-01' AND amount<0 AND is_internal=0 AND (category_id IS NULL OR category_id NOT IN ('wedding','mortgage')) AND merchant NOT LIKE '%Visa%'",
+      )
+      .get() as { share: number }
+    const before = db.prepare('SELECT total_changes() AS n').get()
+    const result = request<{ coverage: { uncategorizedShare: number } }>(
+      'get',
+      '/api/home/brief',
+    ).data!
+    expect(result.coverage.uncategorizedShare).toBe(direct.share)
+    expect(direct.share).toBe(0.5)
+    const commitments = request<{ obligations: { name: string }[] }>(
+      'get',
+      '/api/home/commitments',
+    ).data!
+    expect(commitments.obligations.map((o) => o.name)).toContain(
+      'Synthetic display',
+    )
+    expect(db.prepare('SELECT total_changes() AS n').get()).toEqual(before)
+    const id = homeContext(deps).obligations.find(
+      (o) => o.name === 'Synthetic display',
+    )!.id
+    const updated = request(
+      'put',
+      '/api/obligations/:id',
+      { confirmed: true },
+      { id },
+    ).data!
+    expect(updated).not.toHaveProperty('paymentIds')
+  })
+  it('reserves individually matched mortgages before detecting residual loan suggestions', () => {
+    const s = snapshot()
+    s.mortgages.push({
+      ...s.mortgages[0],
+      mortgageKey: 'synthetic-second',
+      lastPaymentAmount: 500,
+      dayOfPayment: 10,
+    })
+    deps.mortgage = () => s
+    for (const m of ['2030-03', '2030-04', '2030-05']) {
+      insert(
+        'mortgage' + m,
+        m + '-15',
+        'Synthetic mortgage bank',
+        -210,
+        'checking',
+        'mortgage',
+      )
+      insert('mortgage-loan' + m, m + '-10', 'Synthetic loan repayment', -520)
+      insert('other-loan' + m, m + '-10', 'Synthetic loan repayment', -900)
+    }
+    const ctx = homeContext(deps)
+    expect(ctx.obligations.map((o) => [o.kind, o.expectedAmount])).toEqual([
+      ['loan', 900],
+      ['mortgage', 200],
+      ['mortgage', 500],
+    ])
+    const ids = ctx.obligations.flatMap((o) => o.paymentIds!)
+    expect(ids).toHaveLength(9)
+    expect(new Set(ids).size).toBe(9)
+    const commitments = request<{
+      obligations: {
+        trail: { month: string; status: string }[]
+        kind: string
+      }[]
+    }>('get', '/api/home/commitments').data!
+    for (const o of commitments.obligations.filter(
+      (o) => o.kind === 'mortgage',
+    ))
+      expect(o.trail.find((t) => t.month === '2030-05')!.status).toBe('paid')
+  })
+})

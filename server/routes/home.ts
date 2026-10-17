@@ -158,7 +158,8 @@ export function mountHomeRoutes(app: Express, deps: HomeDeps): void {
           })
       const o = { ...existing, ...parsed.data }
       save(o)
-      res.json(o)
+      const { paymentIds: _paymentIds, ...entity } = o
+      res.json(entity)
     }),
   )
   app.delete(
