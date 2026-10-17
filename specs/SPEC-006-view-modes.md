@@ -1,11 +1,17 @@
 # SPEC-006: Cashflow View & Exclusions
 
 - **Spec ID**: SPEC-006
-- **Version**: 3
-- **Status**: current
-- **Last Updated**: 2026-07-24
+- **Version**: 4
+- **Status**: deprecated
+- **Last Updated**: 2026-10-17
 
 ---
+
+## Home shell supersession
+
+This spec is deprecated for the home shell, superseded by SPEC-019. Home has Runway, Commitments, and Brief modes; these describe different household questions, not different household datasets. Home excludes committee accounts and internal transfers and uses the everyday household scope. Projects are accessed through search.
+
+The cashflow/exclusion behavior below remains supported on existing pages outside home for backwards compatibility.
 
 ## Overview
 

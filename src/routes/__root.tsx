@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import {
+  HeadContent,
+  Scripts,
+  createRootRoute,
+  useRouterState,
+} from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 
@@ -17,7 +22,7 @@ export const Route = createRootRoute({
       },
       {
         name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
+        content: 'width=device-width, initial-scale=1, viewport-fit=cover',
       },
       {
         title: 'SpendWise',
@@ -35,15 +40,21 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const isHome = useRouterState({
+    select: (state) => state.location.pathname === '/',
+  })
   const [searchOpen, setSearchOpen] = useState(false)
   const [showDevtools, setShowDevtools] = useState(false)
 
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-      e.preventDefault()
-      setSearchOpen((prev) => !prev)
-    }
-  }, [])
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!isHome && (e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setSearchOpen((prev) => !prev)
+      }
+    },
+    [isHome],
+  )
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown)
@@ -65,13 +76,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <ViewModeProvider>
-          <Header onOpenSearch={() => setSearchOpen(true)} />
+          {!isHome && <Header onOpenSearch={() => setSearchOpen(true)} />}
           {children}
-          <CommandPalette
-            open={searchOpen}
-            onClose={() => setSearchOpen(false)}
-          />
-          {showDevtools && (
+          {!isHome && (
+            <CommandPalette
+              open={searchOpen}
+              onClose={() => setSearchOpen(false)}
+            />
+          )}
+          {showDevtools && !isHome && (
             <TanStackDevtools
               config={{
                 position: 'bottom-right',

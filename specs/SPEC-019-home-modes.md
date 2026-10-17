@@ -2,7 +2,7 @@
 
 - **Spec ID**: SPEC-019
 - **Version**: 1
-- **Status**: in-progress
+- **Status**: current
 - **Last Updated**: 2026-10-17
 
 ---
@@ -58,7 +58,7 @@ All home modes cover household checking accounts and cards together. Committee a
 - Each mode and the projects list has loading, recoverable error, and empty states.
 - Failed data loads offer retry. Switching modes cannot display a previous mode’s data.
 - Financial amounts use ILS and tabular numerals. Merchant and project labels support Hebrew text direction.
-- The layout is phone-first, readable on desktop, and uses the existing theme with correct light and dark presentation.
+- The layout is phone-first with a centered, narrow column on desktop. Home follows the system light or dark preference and honors an explicit dark theme, using the existing semantic palette.
 - Development previews may use clearly labelled synthetic household data; production never silently substitutes demonstration data.
 
 ## Related Specifications

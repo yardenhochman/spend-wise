@@ -5,10 +5,10 @@ import type { TagSummary as Summary } from '@/lib/types'
 import { useViewMode } from '@/lib/view-mode'
 import { formatILS } from '@/utils/currency'
 
-export default function TagSummary() {
+export default function TagSummary({ selectedTag }: { selectedTag?: string }) {
   const { mode, excludedKinds } = useViewMode()
   const [items, setItems] = useState<Summary[]>([])
-  const [selected, setSelected] = useState('')
+  const [selected, setSelected] = useState(selectedTag ?? '')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   useEffect(() => {
@@ -27,7 +27,8 @@ export default function TagSummary() {
       active = false
     }
   }, [mode, excludedKinds])
-  const summary = items.find((t) => t.id === selected) ?? items[0]
+  const summary =
+    items.find((t) => t.id === selected || t.name === selected) ?? items[0]
   if (loading)
     return (
       <p role="status" className="text-gray-60">

@@ -8,13 +8,17 @@ import { getAnalysisReport } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 
 export const Route = createFileRoute('/insights')({
-  validateSearch: (s: Record<string, unknown>): { view?: 'tags' } => ({
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): { view?: 'tags'; tag?: string } => ({
     view: s.view === 'tags' ? 'tags' : undefined,
+    tag: typeof s.tag === 'string' ? s.tag : undefined,
   }),
   component: InsightsPage,
 })
 
 function InsightsPage() {
+  const { tag } = Route.useSearch()
   const [exporting, setExporting] = useState(false)
   const [view, setView] = useState<'summary' | 'monthly' | 'tags'>(
     Route.useSearch().view === 'tags' ? 'tags' : 'summary',
@@ -94,7 +98,7 @@ function InsightsPage() {
         </div>
 
         {view === 'tags' ? (
-          <TagSummary />
+          <TagSummary selectedTag={tag} />
         ) : view === 'summary' ? (
           <SpendingBreakdown />
         ) : (

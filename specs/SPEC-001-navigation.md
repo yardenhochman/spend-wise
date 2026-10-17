@@ -1,21 +1,21 @@
 # SPEC-001: Navigation & Information Architecture
 
 - **Spec ID**: SPEC-001
-- **Version**: 3
+- **Version**: 4
 - **Status**: current
-- **Last Updated**: 2026-07-24
+- **Last Updated**: 2026-10-17
 
 ---
 
 ## Overview
 
-SpendWise organizes its features across seven primary pages accessible via a persistent top navigation bar, plus a global command palette for quick access.
+SpendWise opens on the household home screen described in SPEC-019. Its three modes use bottom navigation and its search sheet provides access to projects and existing pages. Existing pages retain their top navigation and command palette. The SpendWise brand link returns to home.
 
 ## Pages
 
 | Page        | Label       | Purpose                                                      |
 | ----------- | ----------- | ------------------------------------------------------------ |
-| Insights    | Insights    | Spending analytics dashboard (default landing page)          |
+| Insights    | Insights    | Spending analytics dashboard          |
 | Investments | Investments | Brokerage portfolio tracking and performance snapshots       |
 | Recurring   | Recurring   | Subscription and recurring transaction tracking              |
 | Actions     | Actions     | Actionable cost-saving recommendations                       |
@@ -25,8 +25,8 @@ SpendWise organizes its features across seven primary pages accessible via a per
 
 ## Navigation Bar
 
-- Persistent header visible on all pages
-- Left: Logo ("SpendWise") linking to Insights
+- On existing pages other than home, a persistent header is visible
+- Left: Logo ("SpendWise") linking to home
 - Center: Six main navigation tabs with icons and labels
 - Right: Command palette trigger, Import button, and cashflow exclusion toggles
 - Active page tab is visually highlighted
@@ -54,9 +54,9 @@ Toggles filter data across the relevant pages. Full cashflow is the default.
 - The page is always reachable regardless of the active expense view mode
 - The page includes an import action for brokerage snapshot files
 
-## Root Redirect
+## Home
 
-Navigating to `/` redirects to `/insights`.
+Navigating to `/` opens Runway, Commitments, or Brief. SPEC-019 governs home mode selection, the bottom navigation, and the search sheet. The old exclusion controls are absent from home.
 
 ## Deep Linking
 
@@ -64,3 +64,5 @@ Navigating to `/` redirects to `/insights`.
 - `/transactions?q=X` — pre-fills merchant search
 - `/review?filter=X` — pre-selects quality flag tab
 - `/review?category_id=X` — pre-filters review by category
+
+- `/insights?view=tags&tag=X` — opens the selected project in the existing tag view.

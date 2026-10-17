@@ -43,7 +43,7 @@ export default function Header({
   return (
     <header className="sticky top-0 z-40 flex flex-wrap items-center gap-2 border-b border-gray-10 bg-surface/95 px-3 py-2 shadow-sm backdrop-blur sm:px-4 lg:gap-6 lg:px-6">
       <Link
-        to="/insights"
+        to="/"
         className="mr-2 shrink-0 text-lg font-bold tracking-tight text-gray-100 sm:mr-4 sm:text-xl"
       >
         SpendWise
