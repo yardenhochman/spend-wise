@@ -3,6 +3,9 @@ import { randomUUID } from 'node:crypto'
 import './lib/import-env.js'
 import { readBrokerInput } from './lib/broker-input.js'
 import { isInternalSettlement } from './lib/internal-settlements.js'
+import { extractBalances, persistBalances } from './lib/home/balances.js'
+import { allowedAccount } from './lib/home/household.js'
+import { spendWiseConfig } from './lib/private-config.js'
 
 import { db, ensureAccount, nowIso } from './db.js'
 import {
@@ -182,12 +185,23 @@ function importTransactions(args: {
   from: string
   write: boolean
   accounts: unknown[]
+  asOf: string
 }): ImportSummary {
-  const mapped = mapScrapedAccountTransactions(
-    args.accounts as Parameters<typeof mapScrapedAccountTransactions>[0],
+  if (!spendWiseConfig.household?.accountNumbers.length) {
+    throw new Error(
+      'Configure household.accountNumbers in the private overlay before importing',
+    )
+  }
+  const householdAccounts = (
+    args.accounts as Parameters<typeof mapScrapedAccountTransactions>[0]
+  ).filter(
+    (account) =>
+      !!account.accountNumber &&
+      allowedAccount(account.accountNumber, spendWiseConfig.household),
   )
-  const rawCount = (args.accounts as { txns?: unknown[] }[]).reduce(
-    (count, account) => count + (account.txns?.length ?? 0),
+  const mapped = mapScrapedAccountTransactions(householdAccounts)
+  const rawCount = householdAccounts.reduce(
+    (count, account) => count + account.txns.length,
     0,
   )
 
@@ -195,7 +209,7 @@ function importTransactions(args: {
     provider: args.provider,
     from: args.from,
     mode: args.write ? 'write' : 'dry-run',
-    accounts: args.accounts.length,
+    accounts: householdAccounts.length,
     parsed: mapped.length,
     inserted: 0,
     deduped: 0,
@@ -227,6 +241,15 @@ function importTransactions(args: {
 
   const insertAll = db.transaction(() => {
     if (args.write) {
+      persistBalances(
+        db,
+        extractBalances(
+          { accounts: args.accounts },
+          args.asOf,
+          spendWiseConfig.household,
+        ),
+        nowIso(),
+      )
       insertFile.run(
         importId,
         `${args.provider}-scraper-${args.from}`,
@@ -313,6 +336,7 @@ async function main(): Promise<void> {
       from,
       write: options.write,
       accounts,
+      asOf: input?.fetched_at ?? nowIso(),
     })
     console.log(
       JSON.stringify(

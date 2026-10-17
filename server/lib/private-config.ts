@@ -1,6 +1,13 @@
 import fs from 'fs'
 import path from 'path'
 
+export interface HouseholdConfig {
+  accountNumbers: string[]
+  legacyAccountIds?: string[]
+  runwayFloor?: number
+  graceDays?: number
+}
+
 export interface TagRuleDefinition {
   pattern: string
   match_type: string
@@ -29,6 +36,7 @@ export interface ActionCardDefinition {
 }
 
 interface SpendWiseConfigFile {
+  household?: HouseholdConfig
   viewModeRules?: {
     homeInclude?: string[]
     weddingInclude?: string[]
@@ -41,6 +49,7 @@ interface SpendWiseConfigFile {
 }
 
 export interface SpendWiseConfig {
+  household?: HouseholdConfig
   viewModeRules: {
     homeInclude: string[]
     weddingInclude: string[]
@@ -92,6 +101,7 @@ export const privateConfigPath = fs.existsSync(PRIVATE_CONFIG_PATH)
   : null
 
 export const spendWiseConfig: SpendWiseConfig = {
+  household: privateConfig.household ?? defaultConfig.household,
   viewModeRules: {
     homeInclude: mergeStringArrays(
       defaultConfig.viewModeRules?.homeInclude,

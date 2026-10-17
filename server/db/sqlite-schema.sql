@@ -158,3 +158,33 @@ CREATE TABLE IF NOT EXISTS tag_profiles (
   end_date TEXT,
   review_note TEXT
 );
+
+-- Additive home API migration. Balance history is replay-safe per source/time.
+CREATE TABLE IF NOT EXISTS account_balances (
+  account_key TEXT NOT NULL,
+  label TEXT NOT NULL,
+  balance REAL NOT NULL,
+  currency TEXT NOT NULL,
+  as_of TEXT NOT NULL,
+  source TEXT NOT NULL,
+  imported_at TEXT NOT NULL,
+  PRIMARY KEY (account_key, source, as_of)
+);
+CREATE TABLE IF NOT EXISTS obligations (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK(kind IN ('mortgage','tuition','tax','hoa','loan','utility','other')),
+  expected_amount REAL CHECK(expected_amount > 0),
+  cadence TEXT NOT NULL CHECK(cadence IN ('monthly','bimonthly','yearly','irregular')),
+  due_day INTEGER NOT NULL DEFAULT 1 CHECK(due_day BETWEEN 1 AND 31),
+  anchor_month TEXT NOT NULL,
+  confirmed INTEGER NOT NULL DEFAULT 0 CHECK(confirmed IN (0,1)),
+  deleted INTEGER NOT NULL DEFAULT 0 CHECK(deleted IN (0,1)),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS obligation_matching_rules (
+  obligation_id TEXT PRIMARY KEY REFERENCES obligations(id) ON DELETE CASCADE,
+  pattern TEXT NOT NULL,
+  tolerance REAL NOT NULL DEFAULT 0.15 CHECK(tolerance BETWEEN 0 AND 1)
+);
