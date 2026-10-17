@@ -1,7 +1,7 @@
 # SPEC-019: Household Home Modes
 
 - **Spec ID**: SPEC-019
-- **Version**: 2
+- **Version**: 3
 - **Status**: current
 - **Last Updated**: 2026-10-17
 
@@ -33,7 +33,7 @@ All home modes cover household checking accounts and cards together. Committee a
 
 - Show the current household balance, snapshot date, and a daily balance forecast over eight weeks.
 - The forecast shows salary dates, a dashed zero-balance reference, and the lowest point with date and amount. A plain-language callout explains the forecast low without promising that estimates are certain.
-- List upcoming events from today through the next salary date, including salary and other same-day events. Estimated events are labelled. If fewer than three events fall through the salary date, extend the list through at least the next 14 days. If the next salary is unknown, show available upcoming events and say so.
+- List every upcoming event from today through the later of the next salary date and today + 14 days, including all events on the final day. Estimated events are labelled. Event availability does not depend on a balance snapshot. Preserve each known card cycle as its own readable estimated bill; unlinked cycles use observed household settlement dates and replace overlapping issuer aggregates. An issuer debit cannot mark unrelated card cycles paid. Project suggested and confirmed checking obligations and each mortgage on its own payment day, once per occurrence. Card-paid obligations remain covered by card bills. Separate recurring salary streams even when their bank descriptions are identical; distinguish them by receiving account and recurring payment timing. If the next salary is unknown, show available upcoming events and say so.
 - If no balance is available, say “Balance not available yet” and “Balances arrive with the daily bank import. Upcoming payments are listed below.” Do not offer an upload action. Never imply a missing balance is zero.
 - Forecast or balance warnings remain visible but secondary to the main information.
 

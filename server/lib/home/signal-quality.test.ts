@@ -94,7 +94,7 @@ describe('home signal quality regressions', () => {
       date: '2030-05-01',
       amount: -200,
       account_label: 'Credit Card',
-      notes: 'leumi account synthetic card 0000 cycle 2030-05',
+      notes: 'leumi account 111-22222_33 card 0000 cycle 2030-05',
     })
     expect(
       cardSettlementEvents([...variants, detail], today, '2030-06-30'),
@@ -116,7 +116,7 @@ describe('home signal quality regressions', () => {
       {
         ...detail,
         id: suffix + '-detail',
-        notes: `leumi account synthetic card ${suffix} cycle 2030-05`,
+        notes: `leumi account 111-22222_33 card ${suffix} cycle 2030-05`,
       },
     ])
     expect(cardSettlementEvents(cards, today, '2030-06-30')).toHaveLength(2)

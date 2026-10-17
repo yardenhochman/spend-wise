@@ -350,6 +350,30 @@ describe('settlement and salary forecasting', () => {
       ),
     ).toEqual(cardSettlementEvents([debit], '2030-06-01', '2030-06-30'))
   })
+  it('keeps same-day salaries in different receiving accounts separate', () => {
+    const salaries = ['111-22222_33', '111-44444_55'].flatMap((account, i) =>
+      ['2030-04-01', '2030-05-02'].map((date) =>
+        tx({
+          id: `${account}-${date}`,
+          date,
+          merchant: 'Synthetic salary',
+          category_name: 'Salary',
+          amount: (i + 1) * 1000,
+          notes: `scraper account ${account}`,
+        }),
+      ),
+    )
+    expect(
+      salaryEvents(salaries, '2030-06-01', '2030-06-30').map((e) => [
+        e.date,
+        e.label,
+        e.amount,
+      ]),
+    ).toEqual([
+      ['2030-06-02', 'Salary 1', 1000],
+      ['2030-06-02', 'Salary 2', 2000],
+    ])
+  })
   it('aggregates salary per employer/month and avoids an already-paid month', () => {
     const salaries = history.map((t) => ({
       ...t,

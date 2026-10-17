@@ -101,6 +101,167 @@ beforeEach(() => {
 })
 afterEach(() => db.close())
 describe('home route contract', () => {
+  it('keeps individual card cycles, suggested/confirmed checking bills and mortgages with no balance', () => {
+    for (const m of ['2030-03', '2030-04', '2030-05']) {
+      insert(
+        `visa-${m}`,
+        `${m}-${m === '2030-05' ? '22' : '02'}`,
+        'Visa',
+        -600,
+        'checking',
+        'utilities',
+        undefined,
+        1,
+      )
+      insert(`building-${m}`, `${m}-21`, 'Synthetic building management', -150)
+      insert(`internet-${m}`, `${m}-25`, 'Synthetic internet service', -120)
+      insert(`loan-${m}`, `${m}-24`, 'Synthetic loan repayment', -250)
+    }
+    // An early issuer debit is not evidence that the three detailed cycles are paid.
+    insert('early-mastercard', '2030-06-02', 'ל.מאסטרקארד', -77)
+    for (const [i, suffix] of ['0000', '8888', '9999'].entries())
+      insert(
+        `cycle-${i}`,
+        '2030-06-05',
+        'Synthetic purchase',
+        -(i + 1) * 100,
+        'card',
+        'utilities',
+        `leumi account 111-22222_33 card ${suffix} cycle 2030-06`,
+      )
+    const mortgage = snapshot()
+    mortgage.mortgages[0].dayOfPayment = 22
+    mortgage.mortgages.push({
+      ...mortgage.mortgages[0],
+      mortgageKey: 'synthetic-second',
+      dayOfPayment: 23,
+      lastPaymentAmount: 500,
+    })
+    deps.mortgage = () => mortgage
+    request('post', '/api/obligations', {
+      name: 'Synthetic confirmed bill',
+      expectedAmount: 50,
+      dueDay: 26,
+    })
+    const result = request<{
+      openingBalance: number | null
+      days: unknown[]
+      events: {
+        date: string
+        kind: string
+        label: string
+        amount: number
+        estimated: boolean
+      }[]
+    }>('get', '/api/home/runway', undefined, { days: '14' }).data!
+    expect(result.openingBalance).toBeNull()
+    expect(result.days).toEqual([])
+    expect(result.events.filter((e) => e.kind === 'card')).toEqual(
+      [100, 200, 300].map((amount, i) => ({
+        date: '2030-06-22',
+        kind: 'card',
+        label: `Card ${i + 1} bill`,
+        amount: -amount,
+        estimated: true,
+      })),
+    )
+    expect(
+      result.events
+        .filter((e) => e.kind === 'mortgage')
+        .map((e) => [e.date, e.label]),
+    ).toEqual([
+      ['2030-06-22', 'Mortgage 1'],
+      ['2030-06-23', 'Mortgage 2'],
+    ])
+    expect(
+      result.events
+        .filter((e) => e.kind === 'obligation')
+        .map((e) => [e.date, e.label]),
+    ).toEqual([
+      ['2030-06-21', 'Synthetic building management'],
+      ['2030-06-24', 'Synthetic loan repayment'],
+      ['2030-06-25', 'Synthetic internet service'],
+      ['2030-06-26', 'Synthetic confirmed bill'],
+    ])
+    expect(
+      homeContext(deps).obligations.some((o) => /Visa|מאסטר/.test(o.name)),
+    ).toBe(false)
+    expect(result.events).toHaveLength(9)
+    insert(
+      'paid-card-cycle',
+      '2030-06-10',
+      'Visa 8888',
+      -200,
+      'checking',
+      'utilities',
+      undefined,
+      1,
+    )
+    const afterPayment = request<{
+      events: { kind: string; amount: number }[]
+    }>('get', '/api/home/runway', undefined, { days: '14' }).data!
+    expect(
+      afterPayment.events.filter((e) => e.kind === 'card').map((e) => e.amount),
+    ).toEqual([-100, -300])
+  })
+  it('forecasts two same-description salary streams separately, including banking delays', () => {
+    for (const [i, m] of ['2030-03', '2030-04', '2030-05'].entries()) {
+      insert(
+        `salary-a-${m}`,
+        `${m}-0${i === 1 ? 2 : 1}`,
+        'Synthetic salary transfer',
+        1000,
+        'checking',
+        'salary',
+      )
+      insert(
+        `salary-b-${m}`,
+        `${m}-09`,
+        'Synthetic salary transfer',
+        2000,
+        'checking',
+        'salary',
+      )
+    }
+    deps.today = () => '2030-06-05'
+    insert(
+      'salary-a-current',
+      '2030-06-01',
+      'Synthetic salary transfer',
+      1000,
+      'checking',
+      'salary',
+    )
+    const result = request<{
+      events: { date: string; kind: string; label: string; amount: number }[]
+    }>('get', '/api/home/runway').data!
+    expect(result.events).toEqual(
+      [
+        {
+          date: '2030-06-09',
+          label: 'Salary 2',
+          amount: 2000,
+          kind: 'salary',
+          estimated: true,
+        },
+        {
+          date: '2030-07-01',
+          label: 'Salary 1',
+          amount: 1000,
+          kind: 'salary',
+          estimated: true,
+        },
+        {
+          date: '2030-07-09',
+          label: 'Salary 2',
+          amount: 2000,
+          kind: 'salary',
+          estimated: true,
+        },
+      ].filter((e) => e.date >= deps.today()),
+    )
+  })
+
   it('returns all four empty shapes, null balance and no GET writes', () => {
     const before = db.prepare('SELECT total_changes() AS n').get()
     const runway = request('get', '/api/home/runway').data

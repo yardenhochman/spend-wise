@@ -19,8 +19,6 @@ export function upcomingEvents(data: RunwayResponse) {
     .filter((e) => e.date >= data.asOf)
     .sort((a, b) => a.date.localeCompare(b.date))
   if (!data.nextSalary) return future
-  const untilSalary = future.filter((e) => e.date <= data.nextSalary!.date)
-  if (untilSalary.length >= 3) return untilSalary
   const fortnight = format(addDays(parseISO(data.asOf), 14), 'yyyy-MM-dd')
   const end =
     data.nextSalary.date > fortnight ? data.nextSalary.date : fortnight

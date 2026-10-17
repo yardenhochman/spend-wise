@@ -1,5 +1,5 @@
 import { dueDate, median, monthOffset, round } from './dates.js'
-import { isChecking } from './household.js'
+import { accountKey, isChecking } from './household.js'
 import { cardIssuer, transactionLabel } from './labels.js'
 import type { Event, HomeTransaction } from './types.js'
 const hebrewMonths = [
@@ -32,99 +32,133 @@ export function parseBillingCycle(
     return null
   return { card: `${m[1]}:${m[2]}`, month }
 }
+function settlementAccount(t: HomeTransaction): string {
+  const number = t.notes?.match(/(?:scraper|leumi) account ([^ ;]+)/)?.[1]
+  return number ? accountKey(number) : t.account_id
+}
+function billLabel(issuer: string | null, ordinal: number): string {
+  const names: Record<string, string> = {
+    visa: 'Visa card bill',
+    mastercard: 'Mastercard bill',
+    isracard: 'Isracard bill',
+    cal: 'Cal card bill',
+    max: 'Max card bill',
+    'international-card': 'International card bill',
+  }
+  return issuer && names[issuer] ? names[issuer] : `Card ${ordinal} bill`
+}
 export function cardSettlementEvents(
   rows: HomeTransaction[],
   today: string,
   end: string,
 ): Event[] {
-  const cycles = new Map<string, Map<string, number>>()
+  const cycles = new Map<
+    string,
+    { account: string; months: Map<string, number> }
+  >()
   for (const t of rows) {
     if (t.date > today || isChecking(t)) continue
     const cycle = parseBillingCycle(t.notes)
     if (!cycle || cycle.month < monthOffset(today, -6)) continue
-    const months = cycles.get(cycle.card) ?? new Map<string, number>()
-    months.set(cycle.month, (months.get(cycle.month) ?? 0) + t.amount)
-    cycles.set(cycle.card, months)
+    const item = cycles.get(cycle.card) ?? {
+      account: settlementAccount(t),
+      months: new Map<string, number>(),
+    }
+    item.months.set(cycle.month, (item.months.get(cycle.month) ?? 0) + t.amount)
+    cycles.set(cycle.card, item)
   }
-  const groups = new Map<
-    string,
-    { issuer: string; debits: HomeTransaction[]; cards: string[] }
-  >()
-  const seen = new Map<string, HomeTransaction[]>()
-  for (const t of rows) {
-    const issuer = cardIssuer(t.merchant)
+  const numberedCard = (t: HomeTransaction) =>
+    [...cycles.keys()].find(
+      (key) =>
+        cycles.get(key)!.account === settlementAccount(t) &&
+        `${t.merchant} ${(t.notes ?? '').replace(/(?:scraper|leumi) account [^ ;]+/, '')}`
+          .split(/\D+/)
+          .includes(key.split(':').at(-1)!),
+    )
+  const debits: HomeTransaction[] = []
+  for (const t of [...rows].sort((a, b) => a.date.localeCompare(b.date))) {
     if (
-      !issuer ||
       !isChecking(t) ||
+      !cardIssuer(t.merchant) ||
       t.amount >= 0 ||
       t.date > today ||
       t.date < monthOffset(today, -6) + '-01'
     )
       continue
-    const card = [...cycles.keys()].find((key) =>
-      `${t.merchant} ${t.notes ?? ''}`
+    // Only duplicate source spellings collapse; separate debits remain evidence.
+    if (
+      debits.some(
+        (p) =>
+          settlementAccount(p) === settlementAccount(t) &&
+          cardIssuer(p.merchant) === cardIssuer(t.merchant) &&
+          numberedCard(p) === numberedCard(t) &&
+          round(p.amount) === round(t.amount) &&
+          p.date.slice(0, 7) === t.date.slice(0, 7) &&
+          (p.date === t.date || p.merchant !== t.merchant),
+      )
+    )
+      continue
+    debits.push(t)
+  }
+  const linked = new Map<string, HomeTransaction[]>()
+  for (const t of debits) {
+    const eligible = [...cycles].filter(
+      ([, c]) => c.account === settlementAccount(t),
+    )
+    const numbered = eligible.filter(([key]) =>
+      `${t.merchant} ${(t.notes ?? '').replace(/(?:scraper|leumi) account [^ ;]+/, '')}`
         .split(/\D+/)
         .includes(key.split(':').at(-1)!),
     )
-    const key = `${issuer}:${card ?? ''}`
-    // Source spelling variants describe the same debit, not another card cycle.
-    const debitKey = `${key}:${t.date.slice(0, 7)}:${round(t.amount)}`
-    const previous = seen.get(debitKey) ?? []
-    if (previous.some((p) => p.date === t.date || p.merchant !== t.merchant))
-      continue
-    previous.push(t)
-    seen.set(debitKey, previous)
-    const group = groups.get(key) ?? { issuer, debits: [], cards: [] }
-    group.debits.push(t)
-    if (card && !group.cards.includes(card)) group.cards.push(card)
-    groups.set(key, group)
-  }
-  // Link unnumbered ledger entries only with unique observed cycle-amount evidence.
-  // Otherwise the issuer ledger is the forecast source; never add unlinked cards on top.
-  for (const [card, months] of cycles) {
-    if ([...groups.values()].some((g) => g.cards.includes(card))) continue
-    const candidates = [...groups.values()].filter((g) =>
-      [...months].some(([month, amount]) =>
-        g.debits.some(
-          (t) => t.date.startsWith(month) && Math.abs(t.amount - amount) < 1,
-        ),
-      ),
+    const matching = numbered.length
+      ? numbered
+      : eligible.filter(
+          ([, c]) =>
+            Math.abs(
+              (c.months.get(t.date.slice(0, 7)) ?? Infinity) - t.amount,
+            ) < 1,
+        )
+    // Ambiguous equal-amount cards cannot both own the same checking debit.
+    if (
+      !matching.length &&
+      eligible.length === 1 &&
+      cardIssuer(t.merchant) === 'card'
     )
-    if (candidates.length === 1) candidates[0].cards.push(card)
-    else if (groups.size === 1 && [...groups.values()][0].issuer === 'card')
-      [...groups.values()][0].cards.push(card)
+      matching.push(eligible[0])
+    if (matching.length !== 1) continue
+    const key = matching[0][0]
+    linked.set(key, [...(linked.get(key) ?? []), t])
   }
   const result: Event[] = []
-  for (const [, group] of [...groups].sort(([a], [b]) => a.localeCompare(b))) {
-    const monthly = new Map<string, HomeTransaction[]>()
-    for (const t of group.debits) {
-      const m = t.date.slice(0, 7)
-      monthly.set(m, [...(monthly.get(m) ?? []), t])
-    }
+  let ordinal = 0
+  for (const [key, cycle] of [...cycles].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    ordinal++
+    const own = linked.get(key) ?? []
+    const history = own.length ? own : debits
+    if (!history.length) continue // Never invent a payment day without bank evidence.
+    // Use the latest complete month's household debit days for unlinked cards.
+    // Partial current-month early debits do not shift the remaining billing run.
+    const complete = history.filter(
+      (t) => t.date.slice(0, 7) < today.slice(0, 7),
+    )
+    const latestMonth = complete.at(-1)?.date.slice(0, 7)
+    const datingHistory = own.length
+      ? own
+      : latestMonth
+        ? complete.filter((t) => t.date.startsWith(latestMonth))
+        : history
     const day = Math.round(
-      median(
-        [...monthly.values()].map((ts) =>
-          Number([...ts].sort((a, b) => a.amount - b.amount)[0].date.slice(8)),
-        ),
-      ),
+      median(datingHistory.map((t) => Number(t.date.slice(8)))),
     )
-    const ledgerEstimate = median(
-      [...monthly]
-        .sort()
-        .slice(-3)
-        .map(([, ts]) => ts.reduce((s, t) => s + t.amount, 0)),
-    )
-    const label = transactionLabel(
-      [...group.debits].sort(
-        (a, b) =>
-          b.date.localeCompare(a.date) || a.merchant.localeCompare(b.merchant),
-      )[0],
-    )
-    const known = new Map<string, number>()
-    for (const card of group.cards)
-      for (const [m, amount] of cycles.get(card)!)
-        known.set(m, (known.get(m) ?? 0) + amount)
-    const recent = [...known]
+    const issuer = own.length ? cardIssuer(own.at(-1)!.merchant) : null
+    const latest = own.at(-1)
+    const label =
+      latest?.display_name && latest.display_name !== latest.merchant
+        ? transactionLabel(latest)
+        : billLabel(issuer, ordinal)
+    const recent = [...cycle.months]
       .sort()
       .filter(([m]) => m <= today.slice(0, 7))
       .slice(-3)
@@ -134,12 +168,52 @@ export function cardSettlementEvents(
       m = monthOffset(m, 1)
     ) {
       const date = dueDate(m, day)
-      if (date < today || date > end || monthly.has(m)) continue
+      if (date < today || date > end || own.some((t) => t.date.startsWith(m)))
+        continue
       const amount = round(
-        known.get(m) ??
-          (recent.length ? median(recent.map(([, a]) => a)) : ledgerEstimate),
+        cycle.months.get(m) ?? median(recent.map(([, a]) => a)),
       )
       if (amount < 0)
+        result.push({ date, label, amount, kind: 'card', estimated: true })
+    }
+  }
+  // Detail cycles replace issuer aggregates for that account. Adding both would
+  // count the same card twice when the ledger does not expose card identity.
+  const detailAccounts = new Set([...cycles.values()].map((c) => c.account))
+  const ledger = new Map<string, HomeTransaction[]>()
+  for (const t of debits) {
+    if (detailAccounts.has(settlementAccount(t))) continue
+    const key = `${settlementAccount(t)}:${cardIssuer(t.merchant)}`
+    ledger.set(key, [...(ledger.get(key) ?? []), t])
+  }
+  for (const ts of ledger.values()) {
+    const monthly = new Map<string, number>()
+    for (const t of ts)
+      monthly.set(
+        t.date.slice(0, 7),
+        (monthly.get(t.date.slice(0, 7)) ?? 0) + t.amount,
+      )
+    const day = Math.round(median(ts.map((t) => Number(t.date.slice(8)))))
+    const latest = ts.at(-1)!
+    const label =
+      latest.display_name && latest.display_name !== latest.merchant
+        ? transactionLabel(latest)
+        : billLabel(cardIssuer(latest.merchant), ++ordinal)
+    const amount = round(
+      median(
+        [...monthly]
+          .sort()
+          .slice(-3)
+          .map(([, a]) => a),
+      ),
+    )
+    for (
+      let m = today.slice(0, 7);
+      m <= end.slice(0, 7);
+      m = monthOffset(m, 1)
+    ) {
+      const date = dueDate(m, day)
+      if (date >= today && date <= end && !monthly.has(m) && amount < 0)
         result.push({ date, label, amount, kind: 'card', estimated: true })
     }
   }
@@ -150,19 +224,42 @@ export function salaryEvents(
   today: string,
   end: string,
 ): Event[] {
-  const groups = new Map<string, HomeTransaction[]>()
+  const employers = new Map<string, HomeTransaction[]>()
   for (const t of rows)
     if (
+      isChecking(t) &&
+      !t.is_internal &&
       t.category_name === 'Salary' &&
       t.amount > 0 &&
       t.date <= today &&
       t.date >= monthOffset(today, -4) + '-01'
     ) {
-      const list = groups.get(t.merchant) ?? []
-      list.push(t)
-      groups.set(t.merchant, list)
+      const key = `${settlementAccount(t)}:${t.merchant}`
+      employers.set(key, [...(employers.get(key) ?? []), t])
     }
-  return [...groups.values()].flatMap((txs) => {
+  // Generic bank descriptions can represent both earners. Cluster recurring
+  // payment days within each receiving account, allowing up to 3 days' delay.
+  const streams: HomeTransaction[][] = []
+  for (const [, txs] of [...employers].sort(([a], [b]) => a.localeCompare(b))) {
+    const clusters: HomeTransaction[][] = []
+    for (const t of [...txs].sort(
+      (a, b) => Number(a.date.slice(8)) - Number(b.date.slice(8)),
+    )) {
+      const day = Number(t.date.slice(8))
+      const cluster = clusters.find(
+        (ts) =>
+          Math.abs(day - median(ts.map((p) => Number(p.date.slice(8))))) <= 3,
+      )
+      if (cluster) cluster.push(t)
+      else clusters.push([t])
+    }
+    streams.push(
+      ...clusters.filter(
+        (ts) => new Set(ts.map((t) => t.date.slice(0, 7))).size >= 2,
+      ),
+    )
+  }
+  return streams.flatMap((txs, index) => {
     const monthly = new Map<string, HomeTransaction[]>()
     for (const t of txs) {
       const list = monthly.get(t.date.slice(0, 7)) ?? []
@@ -194,7 +291,13 @@ export function salaryEvents(
       )
         result.push({
           date,
-          label: transactionLabel(txs.at(-1)!),
+          label:
+            streams.filter(
+              (ts) =>
+                transactionLabel(ts.at(-1)!) === transactionLabel(txs.at(-1)!),
+            ).length > 1
+              ? `Salary ${index + 1}`
+              : transactionLabel(txs.at(-1)!),
           amount,
           kind: 'salary',
           estimated: true,

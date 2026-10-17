@@ -1,4 +1,4 @@
-import { format, parseISO } from 'date-fns'
+import { addDays, format, parseISO } from 'date-fns'
 import { ArrowDownLeft, ArrowUpRight, Wallet } from 'lucide-react'
 import { getHomeRunway } from '@/lib/api'
 import type { RunwayResponse } from '@/lib/types'
@@ -10,6 +10,11 @@ import { upcomingEvents } from './presentation'
 
 function Runway({ data }: { data: RunwayResponse }) {
   const events = upcomingEvents(data)
+  const fortnight = format(addDays(parseISO(data.asOf), 14), 'yyyy-MM-dd')
+  const windowEnd =
+    data.nextSalary && data.nextSalary.date > fortnight
+      ? data.nextSalary.date
+      : fortnight
   return (
     <>
       {data.openingBalance === null ? (
@@ -68,11 +73,13 @@ function Runway({ data }: { data: RunwayResponse }) {
       <section className="mt-7" aria-labelledby="upcoming-title">
         <div className="mb-3 flex items-baseline justify-between gap-3">
           <h2 id="upcoming-title" className="text-sm font-semibold">
-            {data.nextSalary ? 'Until next salary' : 'Upcoming events'}
+            {data.nextSalary && data.nextSalary.date >= fortnight
+              ? 'Until next salary'
+              : 'Upcoming events'}
           </h2>
           {data.nextSalary && (
             <span className="text-xs text-muted-foreground">
-              {format(parseISO(data.nextSalary.date), 'd MMM')}
+              {format(parseISO(windowEnd), 'd MMM')}
             </span>
           )}
         </div>

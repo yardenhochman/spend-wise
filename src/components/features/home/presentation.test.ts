@@ -49,14 +49,14 @@ describe('home presentation', () => {
       '2030-06-15',
     ])
   })
-  it('keeps every salary-day event and does not extend a window with at least three events', () => {
+  it('keeps every salary-day event and extends busy windows through 14 days', () => {
     const sameDay = Array.from({ length: 4 }, (_, i) => ({
       ...events[2],
       label: `Synthetic ${i}`,
     }))
     expect(
-      upcomingEvents({ ...base, events: [...events.slice(0, 2), ...sameDay] }),
-    ).toEqual(sameDay)
+      upcomingEvents({ ...base, events: [...events, ...sameDay] }),
+    ).toEqual([events[2], ...sameDay, events[4], events[3]])
   })
   it('does not shorten a later salary window and keeps all available events when salary is unknown', () => {
     expect(
