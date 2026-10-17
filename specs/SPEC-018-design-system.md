@@ -1,9 +1,9 @@
 # SPEC-018: Design System & Theming
 
 - **Spec ID**: SPEC-018
-- **Version**: 1
+- **Version**: 2
 - **Status**: current
-- **Last Updated**: 2026-02-28
+- **Last Updated**: 2026-07-24
 
 ---
 
@@ -14,20 +14,24 @@ SpendWise uses a dark-themed design system optimized for financial data readabil
 ## Color Palette
 
 ### Core Colors
+
 - **Page background**: Deep navy (#0f172a)
 - **Surface** (cards, inputs): Slate (#1e293b)
 - **Surface-alt** (hover, headers): Medium slate (#334155)
 - **Brand**: Indigo (#6366f1) for active states, buttons, highlights
 
 ### Semantic Colors
+
 - **Expense/Negative**: Rose (#fb7185)
 - **Income/Positive**: Emerald (#34d399)
 - **Warning/Review**: Amber (#f59e0b)
 
 ### Gray Scale (6 tones)
+
 Ranges from near-black (gray-10: #1e293b) to near-white (gray-100: #f1f5f9), used for borders, text hierarchy, and disabled states.
 
 ### Category Colors
+
 40+ unique colors assigned to categories for consistent identification across charts, pills, dots, and badges. Each view mode (Routine, Home, Wedding) has its own color group.
 
 ## Typography
@@ -40,6 +44,7 @@ Ranges from near-black (gray-10: #1e293b) to near-white (gray-100: #f1f5f9), use
 ## Amount Display
 
 Amounts follow a consistent format across the app:
+
 - ILS currency symbol (₪) prefix
 - Integer portion in normal weight
 - Decimal portion in smaller, reduced-opacity text
@@ -49,6 +54,7 @@ Amounts follow a consistent format across the app:
 ## UI Primitives
 
 Reusable components following shadcn/ui patterns:
+
 - **Button**: 6 variants (default, outline, secondary, ghost, destructive, link) x 7 sizes
 - **Badge**: Pill-shaped labels with custom color support
 - **Card**: Container with header, content, footer sections
@@ -59,7 +65,9 @@ Reusable components following shadcn/ui patterns:
 
 ## Responsive Behavior
 
-- **Mobile**: Icon-only navigation, scrollable tables, stacked layouts
+- **Mobile**: Icon-only navigation, horizontally scrollable header groups,
+  scrollable tables, stacked cards, reduced page padding, and no floating
+  developer tools over content
 - **Tablet**: Full navigation labels, responsive chart widths
 - **Desktop**: Full layouts, multi-column grids, expanded charts
 

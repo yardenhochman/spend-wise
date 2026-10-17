@@ -1,9 +1,9 @@
 # SPEC-005: Tags & Sub-Segments
 
 - **Spec ID**: SPEC-005
-- **Version**: 1
+- **Version**: 2
 - **Status**: current
-- **Last Updated**: 2026-02-28
+- **Last Updated**: 2026-09-29
 
 ---
 
@@ -49,3 +49,7 @@ Tag rules define patterns that automatically assign tags to matching transaction
 - Rules match by merchant pattern (contains/exact/regex)
 - Rules can be scoped to a specific category (e.g., "delivery" tag only applies within "Dining")
 - Applied idempotently — safe to re-run without creating duplicates
+
+## Tagged expense review
+
+Tags can represent a trip or other project spanning multiple months. A tag may have an optional event period and review note. Its summary includes all tagged non-internal transactions regardless of purchase date, gross charges, refunds, net cost, estimate count, category breakdown and daily average over the event period. No separate trip mode or duplicate expense ledger is created.

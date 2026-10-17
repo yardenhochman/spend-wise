@@ -1,9 +1,9 @@
 # SPEC-007: Transaction Management
 
 - **Spec ID**: SPEC-007
-- **Version**: 1
+- **Version**: 2
 - **Status**: current
-- **Last Updated**: 2026-02-28
+- **Last Updated**: 2026-09-29
 
 ---
 
@@ -90,3 +90,7 @@ Each transaction row shows:
 
 - Transactions flagged for review show an amber left border
 - Internal transactions display at reduced opacity with an "Internal" badge
+
+## Tagged expense review
+
+Search supports a shareable tag filter alongside category, merchant and dates. Transactions show original foreign amount and whether their ILS valuation is estimated. Refunds display as positive credits. Existing editing and tag assignment remain available.

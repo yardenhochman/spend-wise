@@ -1,15 +1,22 @@
 # SPEC-008: Insights & Analytics
 
 - **Spec ID**: SPEC-008
-- **Version**: 3
+- **Version**: 5
 - **Status**: current
-- **Last Updated**: 2026-03-24
+- **Last Updated**: 2026-09-29
 
 ---
 
 ## Overview
 
-The Insights page is the primary expense analytics dashboard. SpendWise also provides a dedicated Investments dashboard for brokerage portfolio tracking. The spending dashboard keeps its two existing views: Summary and Monthly.
+The Insights page is the primary expense analytics dashboard. SpendWise also
+provides a dedicated Investments dashboard for brokerage portfolio tracking. The
+spending dashboard keeps its two existing views: Summary and Monthly.
+
+Insights default to full household cashflow: all non-internal income and
+expenses are included. Header toggles can hide Wedding, Loans, Mortgage, and
+Home activity from the active calculation when the user wants a cleaner routine
+spending read.
 
 ## Summary View
 
@@ -17,9 +24,11 @@ The Insights page is the primary expense analytics dashboard. SpendWise also pro
 
 Three summary cards:
 
-- **Total Spend**: Sum of all expenses in the current view mode/date range, with trend indicator
+- **Total Spend**: Sum of all expenses in the current cashflow/exclusion scope
+  and date range, with trend indicator
 - **Total Income**: Sum of all positive transactions
-- **Net**: Income minus spend, color-coded (green if positive, red if negative)
+- **Net**: Income minus spend for the same active scope, color-coded (green if
+  positive, red if negative)
 
 ### Needs/Wants/Savings Breakdown
 
@@ -55,7 +64,8 @@ A ranked list of categories by total spend:
 
 Each month shows:
 
-- **Header**: Month name, transaction count, spend total, income total, net balance
+- **Header**: Month name, transaction count, spend total, income total, net
+  balance, all reflecting the active exclusion toggles
 - **Expanded content**: Category breakdown for that month
   - Each category shows: name, count, amount, percentage, progress bar
   - Categories are further expandable to show individual transactions
@@ -75,7 +85,11 @@ Each month shows:
 
 ## Data Scope
 
-- All analytics respect the active view mode (Routine/Home/Wedding)
+- All analytics default to `cashflow`
+- All analytics respect the active exclusion toggles:
+  `wedding`, `loans`, `mortgage`, and `home`
+- Category drilldowns and trend charts use the same active exclusion scope as
+  the headline totals
 - Spread transactions are amortized in the analytics (see SPEC-016)
 - Internal transactions are always excluded
 
@@ -126,3 +140,7 @@ The Investments page is a separate analytics surface for long-term asset trackin
 - Home mode clearly discloses the rent-yield assumption used to estimate saved rent
 - Home mode makes a distinction between estimated values and imported facts
 - Brokerage mode continues to rely on imported IBKR snapshots, while home mode is derived from SpendWise transaction history plus a market assumption
+
+## Tagged expense review
+
+Insights gains a Tags view alongside Summary and Monthly, using existing card styling, category vocabulary and ILS formatting. Tag totals are full event costs without amortization and include explicit refunds as cost reductions, not trip income. Active exclusion filters apply consistently. Event dates define daily average, not a purchase-date cutoff. Pending purchases and missing cash are disclosed in a review note, not included as finalized spend.

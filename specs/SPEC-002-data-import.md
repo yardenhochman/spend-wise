@@ -1,9 +1,9 @@
 # SPEC-002: Data Import & Parsing
 
 - **Spec ID**: SPEC-002
-- **Version**: 2
+- **Version**: 5
 - **Status**: current
-- **Last Updated**: 2026-03-23
+- **Last Updated**: 2026-09-29
 
 ---
 
@@ -84,3 +84,52 @@ For portfolio snapshot imports:
 - Current holdings are updated for the imported report date
 - Portfolio-level totals are recalculated from the imported snapshot
 - Historical snapshots remain available for trend views
+
+
+## Leumi Mortgage Refresh
+
+The existing authenticated mortgage refresh also retrieves each mortgage's loan
+tracks for refinancing analysis. Each track retains its source identity and,
+where supplied by Leumi, balance, contractual interest rate, anchor and margin,
+indexation, monthly payment, maturity date, next rate reset, and early repayment
+fee breakdown. Missing information remains explicitly unavailable rather than
+being inferred from mortgage-level forecast rates.
+
+The snapshot reports track coverage and leaves unavailable fields empty. If a
+track request fails or expected tracks are missing, the refresh fails and keeps
+the previous snapshot. Refresh status distinguishes that retained data from a
+successful new collection. Differences between overview and summed track
+payments are exposed without changing either source value.
+Account access is read-only. Snapshots and raw responses remain in local private
+storage; CLI summaries contain counts, freshness, and coverage only.
+
+## Official Leumi Documents
+
+An authenticated document command discovers available mortgage documents and
+retrieves an official current balance/early repayment report on request.
+Original bank PDFs are saved in local private storage with document type,
+retrieval time, source date when available, and a content hash. A document index
+allows subsequent requests to find previously downloaded reports and assess freshness.
+A fresh-download request must not silently return a stale report or replace a
+previous valid document when retrieval fails. Repeated identical PDFs are deduplicated.
+The command reports whether the bank supplies an immediate download or requires
+an asynchronous request. Financial transactions and mortgage repayment are outside
+this flow. A locally generated summary is not an official bank document.
+
+The first implementation discovers Leumi's self-service mortgage catalogue and
+supports ordering the detailed early-repayment report and the shorter clearing
+balance certificate. It collects mortgage PDFs from the last 30 days of bank
+mail, preserving their original bytes. Mailbox sent dates are recorded separately
+from retrieval timestamps, without asserting the balance effective date.
+Optional watching checks every five minutes for two hours; it reports a timeout
+if the bank has not delivered. Pending or uncertain orders are not resubmitted.
+Opening documents may mark bank mail as read. Other bank document families are
+not yet supported for ordering.
+
+## Tagged expense review
+
+Live card imports preserve refund direction and original/billing currencies. Only posted rows enter expenses; authorizations remain excluded. Foreign-billed transactions require an explicit ILS valuation, labelled estimated until actual conversion is known. Stable source references prevent duplicate imports when valuation changes. Selected card identity must match the source response; no copying one card’s activity onto another.
+
+### Legacy foreign rows and settlements
+
+Foreign rows resembling unvalued legacy entries are deferred and counted as `legacyForeignNeedsReview`; reconcile against original source records before updating them. Source-key-linked valuations survive replay unchanged. Known bank card-settlement and currency-conversion descriptions are internal regardless of category, including on bank import. Fees remain expenses unless an audited reconciliation already includes them in purchase valuations.

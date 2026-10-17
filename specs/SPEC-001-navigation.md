@@ -1,9 +1,9 @@
 # SPEC-001: Navigation & Information Architecture
 
 - **Spec ID**: SPEC-001
-- **Version**: 2
+- **Version**: 3
 - **Status**: current
-- **Last Updated**: 2026-03-23
+- **Last Updated**: 2026-07-24
 
 ---
 
@@ -13,36 +13,40 @@ SpendWise organizes its features across seven primary pages accessible via a per
 
 ## Pages
 
-| Page      | Label     | Purpose                                                      |
-| --------- | --------- | ------------------------------------------------------------ |
-| Insights  | Insights  | Spending analytics dashboard (default landing page)          |
-| Investments | Investments | Brokerage portfolio tracking and performance snapshots |
-| Recurring | Recurring | Subscription and recurring transaction tracking              |
-| Actions   | Actions   | Actionable cost-saving recommendations                       |
-| Review    | Review    | Data quality flagging and resolution                         |
-| Search    | Search    | Full transaction browser with inline editing                 |
-| Import    | Import    | Statement upload (accessible from header icon, not main nav) |
+| Page        | Label       | Purpose                                                      |
+| ----------- | ----------- | ------------------------------------------------------------ |
+| Insights    | Insights    | Spending analytics dashboard (default landing page)          |
+| Investments | Investments | Brokerage portfolio tracking and performance snapshots       |
+| Recurring   | Recurring   | Subscription and recurring transaction tracking              |
+| Actions     | Actions     | Actionable cost-saving recommendations                       |
+| Review      | Review      | Data quality flagging and resolution                         |
+| Search      | Search      | Full transaction browser with inline editing                 |
+| Import      | Import      | Statement upload (accessible from header icon, not main nav) |
 
 ## Navigation Bar
 
 - Persistent header visible on all pages
 - Left: Logo ("SpendWise") linking to Insights
 - Center: Six main navigation tabs with icons and labels
-- Right: Command palette trigger, Import button, View Mode switcher
+- Right: Command palette trigger, Import button, and cashflow exclusion toggles
 - Active page tab is visually highlighted
-- Responsive: labels hidden on small screens (icon-only)
+- Responsive: on small screens, the header wraps into compact rows; navigation
+  is icon-only and horizontally scrollable, while exclusion toggles remain
+  reachable without causing page-level horizontal overflow
 
-## View Mode Switcher
+## Cashflow Exclusion Toggles
 
-Three toggle buttons in the header controlling a global data filter:
+The header exposes global toggles that remove major non-routine classes from
+the active cashflow view:
 
-| Mode    | Icon   | Scope                         |
-| ------- | ------ | ----------------------------- |
-| Routine | Wallet | Day-to-day household expenses |
-| Home    | Home   | Apartment purchase lifecycle  |
-| Wedding | Heart  | Wedding planning expenses     |
+| Toggle   | Icon     | Scope                                        |
+| -------- | -------- | -------------------------------------------- |
+| Wedding  | Heart    | Wedding expenses                             |
+| Loans    | Receipt  | Home and wedding loan payments/disbursements |
+| Mortgage | Landmark | Mortgage payments                            |
+| Home     | Home     | Home purchase/setup costs                    |
 
-Selecting a mode filters data across all pages. Routine is the default.
+Toggles filter data across the relevant pages. Full cashflow is the default.
 
 ## Investments Navigation
 

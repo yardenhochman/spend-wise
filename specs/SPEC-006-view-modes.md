@@ -1,53 +1,78 @@
-# SPEC-006: View Modes
+# SPEC-006: Cashflow View & Exclusions
 
 - **Spec ID**: SPEC-006
-- **Version**: 2
+- **Version**: 3
 - **Status**: current
-- **Last Updated**: 2026-03-24
+- **Last Updated**: 2026-07-24
 
 ---
 
 ## Overview
 
-SpendWise supports three mutually exclusive view modes that filter all data across every page. View modes represent distinct financial contexts in the user's life.
+SpendWise defaults to a full household cashflow view: all non-internal income
+and expenses are included unless the user explicitly hides a spending class.
+This keeps the first read faithful to the bank reality while still allowing a
+cleaner routine-spending view.
 
-## Modes
+## Default View
 
-### Routine (Default)
+### Cashflow
 
-- **Purpose**: Day-to-day household expense tracking
-- **Includes**: All transactions except those belonging to Home or Wedding categories
-- **Excludes**: All Home Mode categories, all Wedding Mode categories, mortgage payments, home/wedding loan disbursements and repayments
-- Internal transactions are always hidden
+- **Purpose**: Show the full household financial picture for the selected date
+  range.
+- **Includes**: All income and expenses from the imported accounts and cards.
+- **Excludes**: Internal transactions such as inter-account transfers and card
+  payments.
+- **Default**: Active on app load.
 
-### Home
+## Exclusion Toggles
 
-- **Purpose**: Tracking the full cost of an apartment purchase
-- **Includes**: Property Price, Purchase Tax, Closing Costs, Home Loans, Mortgage, Home Purchase
-- **Also includes**: Mortgage payment transactions, home loan disbursements, loan repayments (before a specific date), loan closure transactions, principal/interest payments
-- Internal transactions are always hidden
+The header exposes global toggles that remove matching transactions from
+analytics, monthly summaries, category drilldowns, recurring merchants, review,
+and transaction search.
 
 ### Wedding
 
-- **Purpose**: Tracking wedding planning expenses
-- **Includes**: Wedding, Venue & Catering, Music & Sound, Photography, Wedding Planning, Wedding Loan
-- **Also includes**: Wedding loan repayments (monthly installments), wedding loan disbursement
-- Internal transactions are always hidden
+- Excludes: Wedding, Venue & Catering, Music & Sound, Photography, Wedding
+  Planning.
+- Does not exclude wedding loan repayments; those are handled by Loans.
+
+### Loans
+
+- Excludes: Wedding Loan and Home Loans.
+- Also excludes loan disbursement and repayment patterns configured in the
+  private SpendWise view-mode rules.
+
+### Mortgage
+
+- Excludes: Mortgage.
+- Also excludes configured Leumi mortgage payment patterns.
+
+### Home
+
+- Excludes: Home Purchase, Property Price, Purchase Tax, Closing Costs, and
+  Consulting.
+- Does not exclude mortgage or home-loan financing; those are handled by
+  Mortgage and Loans.
+
+## Legacy Specialized Modes
+
+The server still supports `routine`, `home`, and `wedding` view modes for
+specialized pages and backwards compatibility.
+
+- `routine`: historical shortcut for cashflow minus home, wedding, mortgage,
+  and loan activity.
+- `home`: dedicated home-purchase lifecycle view.
+- `wedding`: dedicated wedding lifecycle view.
+
+Primary household analysis should use `cashflow` plus explicit exclusion
+toggles instead of switching mutually exclusive modes.
 
 ## Behavior
 
-- Mode is selected via the toggle in the header
-- Mode persists across page navigation within a session
-- All API calls include the active view mode
-- Filtering happens server-side — only relevant transactions are returned
-- Some transactions match by category, others match by specific merchant/amount patterns (e.g., loan payments identified by Hebrew merchant patterns)
-- The Investments page is mode-aware:
-  - In `Routine` and `Wedding`, it shows brokerage investment data imported from Interactive Brokers
-  - In `Home`, it switches to a derived home-investment model built from apartment-purchase and mortgage transactions
-
-## Cross-Mode Rules
-
-- A single transaction can only appear in one mode
-- Internal transactions (inter-account transfers, CC payments) are excluded from all modes' insights
-- Uncategorized transactions only appear in Routine mode
-- The Investments page keeps the same route and navigation item across all modes, but its content adapts to the active mode
+- Exclusions persist across page navigation within the current browser session.
+- API calls include `view_mode=cashflow` and, when needed,
+  `excluded_kinds=wedding,loans,mortgage,home`.
+- Filtering happens server-side so returned totals and transaction lists match.
+- Internal transactions remain hidden from analytics even when no exclusion
+  toggles are active.

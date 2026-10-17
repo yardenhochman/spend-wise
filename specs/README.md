@@ -42,14 +42,14 @@ When an agent begins work on a spec, it sets status to `in-progress`. Other agen
 
 | Spec ID  | File                                                              | Feature Area                          | Status  | Version |
 | -------- | ----------------------------------------------------------------- | ------------------------------------- | ------- | ------- |
-| SPEC-001 | [navigation.md](./SPEC-001-navigation.md)                         | Navigation & Information Architecture | current | 2       |
-| SPEC-002 | [data-import.md](./SPEC-002-data-import.md)                       | Data Import & Parsing                 | current | 2       |
+| SPEC-001 | [navigation.md](./SPEC-001-navigation.md)                         | Navigation & Information Architecture | current | 3       |
+| SPEC-002 | [data-import.md](./SPEC-002-data-import.md)                       | Data Import & Parsing                 | current | 5       |
 | SPEC-003 | [deduplication.md](./SPEC-003-deduplication.md)                   | Deduplication                         | current | 1       |
 | SPEC-004 | [categorization.md](./SPEC-004-categorization.md)                 | Categorization & Rules                | current | 1       |
-| SPEC-005 | [tags.md](./SPEC-005-tags.md)                                     | Tags & Sub-Segments                   | current | 1       |
-| SPEC-006 | [view-modes.md](./SPEC-006-view-modes.md)                         | View Modes                            | current | 2       |
-| SPEC-007 | [transactions.md](./SPEC-007-transactions.md)                     | Transaction Management                | current | 1       |
-| SPEC-008 | [insights.md](./SPEC-008-insights.md)                             | Insights & Analytics                  | current | 3       |
+| SPEC-005 | [tags.md](./SPEC-005-tags.md)                                     | Tags & Sub-Segments                   | current | 2       |
+| SPEC-006 | [view-modes.md](./SPEC-006-view-modes.md)                         | Cashflow View & Exclusions            | current | 3       |
+| SPEC-007 | [transactions.md](./SPEC-007-transactions.md)                     | Transaction Management                | current | 2       |
+| SPEC-008 | [insights.md](./SPEC-008-insights.md)                             | Insights & Analytics                  | current | 5       |
 | SPEC-009 | [recurring.md](./SPEC-009-recurring.md)                           | Recurring & Subscriptions             | current | 2       |
 | SPEC-010 | [review.md](./SPEC-010-review.md)                                 | Data Quality Review                   | current | 1       |
 | SPEC-011 | [actions.md](./SPEC-011-actions.md)                               | Actions & Recommendations             | current | 1       |
@@ -59,4 +59,4 @@ When an agent begins work on a spec, it sets status to `in-progress`. Other agen
 | SPEC-015 | [cash-allocations.md](./SPEC-015-cash-allocations.md)             | Cash Allocations & Budgeting          | current | 1       |
 | SPEC-016 | [spread.md](./SPEC-016-spread.md)                                 | Billing Spread / Amortization         | current | 1       |
 | SPEC-017 | [export.md](./SPEC-017-export.md)                                 | Export & Reporting                    | current | 1       |
-| SPEC-018 | [design-system.md](./SPEC-018-design-system.md)                   | Design System & Theming               | current | 1       |
+| SPEC-018 | [design-system.md](./SPEC-018-design-system.md)                   | Design System & Theming               | current | 2       |
