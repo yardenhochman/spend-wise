@@ -24,6 +24,8 @@ export interface HomeTransaction {
   is_recurring_candidate: number
 }
 export interface Obligation {
+  userNamed?: boolean
+  rawMerchant?: string
   id: string
   name: string
   kind: Kind
@@ -37,6 +39,7 @@ export interface Obligation {
   paymentIds?: string[]
 }
 export interface Event {
+  rawMerchant?: string
   date: string
   label: string
   amount: number
@@ -66,10 +69,12 @@ export interface Commitment extends Pick<
   Obligation,
   'id' | 'name' | 'kind' | 'expectedAmount' | 'cadence' | 'confirmed'
 > {
+  rawMerchant?: string
   trail: { month: string; status: TrailStatus; amount: number | null }[]
   note: string | null
 }
 export interface RecurringItem {
+  rawMerchant?: string
   merchant: string
   amount: number
   cadence: 'monthly' | 'yearly' | 'other'

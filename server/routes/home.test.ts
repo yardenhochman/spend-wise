@@ -3,6 +3,7 @@ import express from 'express'
 import type { Express, Request, Response, RequestHandler } from 'express'
 import Database from 'better-sqlite3'
 import { readFileSync } from 'node:fs'
+import { migrateMerchantLabels } from '../lib/merchant-labels.js'
 import { mountHomeRoutes } from './home.js'
 import { config, snapshot } from '../lib/home/test-fixtures.js'
 import { extractBalances, persistBalances } from '../lib/home/balances.js'
@@ -85,6 +86,7 @@ beforeEach(() => {
     INSERT INTO accounts VALUES ('checking','Leumi','Checking','ILS'),('card','Leumi','Credit Card','ILS'),('committee','Other Bank','Committee','ILS');
     INSERT INTO categories (id,name) VALUES ('utilities','Utilities'),('salary','Salary'),('mortgage','Mortgage'),('wedding','Wedding');
     INSERT INTO statement_files VALUES ('file','synthetic','synthetic','2030-06-17T00:00:00Z','synthetic','completed');`)
+  migrateMerchantLabels(db)
   deps = {
     db,
     config,
@@ -240,6 +242,7 @@ describe('home route contract', () => {
         {
           date: '2030-06-09',
           label: 'Salary 2',
+          rawMerchant: 'Synthetic salary transfer',
           amount: 2000,
           kind: 'salary',
           estimated: true,
@@ -247,6 +250,7 @@ describe('home route contract', () => {
         {
           date: '2030-07-01',
           label: 'Salary 1',
+          rawMerchant: 'Synthetic salary transfer',
           amount: 1000,
           kind: 'salary',
           estimated: true,
@@ -254,6 +258,7 @@ describe('home route contract', () => {
         {
           date: '2030-07-09',
           label: 'Salary 2',
+          rawMerchant: 'Synthetic salary transfer',
           amount: 2000,
           kind: 'salary',
           estimated: true,
@@ -530,7 +535,7 @@ describe('home route contract', () => {
 describe('home signal quality integration', () => {
   it('matches routine household coverage to a direct SQL count and resolves aliases without GET writes', () => {
     db.exec(
-      "INSERT INTO merchant_aliases VALUES ('synthetic-alias','Synthetic raw','Synthetic display','contains')",
+      "INSERT INTO merchant_aliases VALUES ('synthetic-alias','Synthetic raw','Synthetic display','contains','seed')",
     )
     for (const m of ['2030-03', '2030-04', '2030-05']) {
       insert('known' + m, m + '-10', 'Synthetic raw order', -900)
@@ -639,5 +644,126 @@ describe('home signal quality integration', () => {
       (o) => o.kind === 'mortgage',
     ))
       expect(o.trail.find((t) => t.month === '2030-05')!.status).toBe('paid')
+  })
+})
+
+describe('merchant labels', () => {
+  const raw = 'Synthetic bank utility'
+  function history() {
+    for (const month of ['03', '04', '05'])
+      insert(`utility-${month}`, `2030-${month}-22`, raw, -150)
+  }
+  it('upserts normalized exact user labels ahead of seeded aliases and clears back to seeds', () => {
+    history()
+    db.prepare(
+      "INSERT INTO merchant_aliases (id,raw_pattern,canonical_name,match_type) VALUES ('seed',?,'Seed utility','contains')",
+    ).run(raw)
+    const label = (value: string) =>
+      request('put', '/api/merchant-labels', {
+        rawMerchant: `  ${raw.toUpperCase()}  כרטיס 123 `,
+        label: value,
+      })
+    expect(label('Friendly utility').status).toBe(200)
+    expect(label('Home electricity').status).toBe(200)
+    expect(
+      db.prepare("SELECT * FROM merchant_aliases WHERE source='user'").all(),
+    ).toHaveLength(1)
+    const data = request<{
+      obligations: { name: string; rawMerchant: string }[]
+    }>('get', '/api/home/commitments').data!
+    expect(data.obligations[0]).toMatchObject({
+      name: 'Home electricity',
+      rawMerchant: raw,
+    })
+    // A later import needs no rewriting or backfill to acquire the label.
+    insert('new-utility', '2030-06-01', raw.toUpperCase() + ' כרטיס 999', -150)
+    expect(
+      homeContext(deps).all.find((t) => t.id === 'new-utility')?.display_name,
+    ).toBe('Home electricity')
+    request('delete', '/api/merchant-labels', { rawMerchant: raw })
+    expect(
+      homeContext(deps).rows.find((t) => t.id === 'utility-03')?.display_name,
+    ).toBe('Seed utility')
+    expect(
+      request('put', '/api/merchant-labels', { rawMerchant: raw, label: '  ' })
+        .status,
+    ).toBe(400)
+    expect(
+      request('put', '/api/merchant-labels', { rawMerchant: '', label: 'Test' })
+        .status,
+    ).toBe(400)
+    expect(request('delete', '/api/merchant-labels', {}).status).toBe(400)
+  })
+  it('labels Runway, recurring and Brief; confirmation keeps following merchant labels', () => {
+    history()
+    request('put', '/api/merchant-labels', {
+      rawMerchant: raw,
+      label: 'Home electricity',
+    })
+    const o = homeContext(deps).obligations[0]
+    request('put', '/api/obligations/:id', { confirmed: true }, { id: o.id })
+    request('put', '/api/merchant-labels', {
+      rawMerchant: raw,
+      label: 'Our electricity',
+    })
+    expect(homeContext(deps).obligations[0].name).toBe('Our electricity')
+    expect(
+      request<{ events: { label: string; rawMerchant: string }[] }>(
+        'get',
+        '/api/home/runway',
+      ).data?.events,
+    ).toContainEqual(
+      expect.objectContaining({ label: 'Our electricity', rawMerchant: raw }),
+    )
+    for (const month of ['03', '04', '05'])
+      insert(
+        `sub-${month}`,
+        `2030-${month}-12`,
+        'GOOGLE YOUTUBEPREMIUM',
+        -25,
+        'card',
+        'utilities',
+      )
+    request('put', '/api/merchant-labels', {
+      rawMerchant: 'GOOGLE YOUTUBEPREMIUM',
+      label: 'Our videos',
+    })
+    expect(
+      request<{ recurring: { items: { merchant: string }[] } }>(
+        'get',
+        '/api/home/commitments',
+      ).data?.recurring.items,
+    ).toContainEqual(expect.objectContaining({ merchant: 'Our videos' }))
+    expect(JSON.stringify(request('get', '/api/home/brief').data)).toContain(
+      'Our videos',
+    )
+  })
+  it('renames a computed suggestion, confirms and persists its own name ahead of merchant labels', () => {
+    history()
+    const original = homeContext(deps).obligations[0]
+    const saved = request(
+      'put',
+      '/api/obligations/:id',
+      { name: 'Visa household bill' },
+      { id: original.id },
+    )
+    expect(saved.data).toMatchObject({
+      name: 'Visa household bill',
+      confirmed: true,
+      matchPattern: raw,
+    })
+    request('put', '/api/merchant-labels', {
+      rawMerchant: raw,
+      label: 'Shared merchant label',
+    })
+    const fresh = homeContext(deps).obligations[0]
+    expect(fresh).toMatchObject({
+      id: original.id,
+      name: 'Visa household bill',
+      confirmed: true,
+      matchPattern: raw,
+    })
+    expect(fresh.paymentIds).toEqual(original.paymentIds)
+    expect(storedObligations(db).obligations).toHaveLength(1)
   })
 })

@@ -1,3 +1,4 @@
+import { MerchantDisplay } from '@/components/app/MerchantName'
 import { useState, useEffect } from 'react'
 import {
   ChevronDown,
@@ -251,7 +252,12 @@ export default function MonthlyDrilldown() {
                                             className="text-gray-80"
                                             dir="auto"
                                           >
-                                            {tx.merchant}
+                                            <MerchantDisplay
+                                              name={
+                                                tx.displayName ?? tx.merchant
+                                              }
+                                              rawMerchant={tx.merchant}
+                                            />
                                           </span>
                                         </div>
                                         <span className="text-negative font-mono tabular-nums whitespace-nowrap">

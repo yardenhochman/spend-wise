@@ -1,3 +1,4 @@
+import { MerchantDisplay } from '@/components/app/MerchantName'
 import { useState, useEffect } from 'react'
 import {
   TrendingDown,
@@ -661,7 +662,13 @@ export default function SpendingBreakdown() {
                                                   dir="auto"
                                                 >
                                                   <div className="text-gray-80 truncate">
-                                                    {tx.merchant}
+                                                    <MerchantDisplay
+                                                      name={
+                                                        tx.displayName ??
+                                                        tx.merchant
+                                                      }
+                                                      rawMerchant={tx.merchant}
+                                                    />
                                                   </div>
                                                   {/* Inline note display */}
                                                   {tx.notes && (
@@ -938,7 +945,10 @@ export default function SpendingBreakdown() {
                           className="text-gray-100 font-medium"
                           dir="auto"
                         >
-                          {m.merchant}
+                          <MerchantDisplay
+                            name={m.displayName ?? m.merchant}
+                            rawMerchant={m.merchant}
+                          />
                         </TableCell>
                         <TableCell className="text-right text-negative font-mono tabular-nums">
                           {formatILS(Math.abs(m.total))}

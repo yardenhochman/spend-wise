@@ -31,6 +31,7 @@ export interface Transaction {
 
   id: string
   date: string
+  displayName?: string
   merchant: string
   amount: number
   currency: string
@@ -194,6 +195,7 @@ export interface CategoryBreakdown {
 }
 
 export interface MerchantBreakdown {
+  displayName?: string
   merchant: string
   total: number
   count: number
@@ -245,6 +247,7 @@ export interface CategoryTrendResponse {
 }
 
 export interface RecurringMerchant {
+  displayName?: string
   merchant: string
   category_name: string | null
   category_id: string | null
@@ -276,6 +279,7 @@ export interface RecurringTrendsResponse {
 
 // ── Global Search ───────────────────────────────────────────────────────────
 export interface SearchMerchantHit {
+  displayName?: string
   merchant: string
   category_name: string | null
   category_id: string | null
@@ -318,6 +322,7 @@ export interface RunwayResponse {
     label: string
     amount: number
     kind: 'salary' | 'mortgage' | 'card' | 'obligation' | 'other'
+    rawMerchant?: string
     estimated: boolean
   }[]
   low: { date: string; balance: number } | null
@@ -337,6 +342,7 @@ export interface CommitmentsResponse {
     cadence: 'monthly' | 'bimonthly' | 'yearly' | 'irregular'
     trail: { month: string; status: TrailStatus; amount: number | null }[]
     note: string | null
+    rawMerchant?: string
     confirmed: boolean
   }[]
   repayments: {
@@ -351,6 +357,7 @@ export interface CommitmentsResponse {
   recurring: {
     annualTotal: number
     items: {
+      rawMerchant?: string
       merchant: string
       amount: number
       cadence: 'monthly' | 'yearly' | 'other'
@@ -371,6 +378,7 @@ export interface BriefResponse {
     title: string
     body: string
     chart: { points: number[] } | null
+    rawMerchants?: string[]
     evidenceTransactionIds: number[]
     agentPrompt: string
   }[]

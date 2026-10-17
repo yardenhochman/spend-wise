@@ -1,3 +1,4 @@
+import { merchantNamesChanged } from '@/components/app/MerchantName'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { ResultAsync } from 'neverthrow'
 import { match } from 'ts-pattern'
@@ -34,6 +35,10 @@ export function useHomeData<T>(load: () => ResultAsync<HomeData<T>, ApiError>) {
   const [state, setState] = useState<LoadState<T>>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
   const retry = useCallback(() => setAttempt((value) => value + 1), [])
+  useEffect(() => {
+    window.addEventListener(merchantNamesChanged, retry)
+    return () => window.removeEventListener(merchantNamesChanged, retry)
+  }, [retry])
   useEffect(() => {
     let active = true
     setState({ status: 'loading' })

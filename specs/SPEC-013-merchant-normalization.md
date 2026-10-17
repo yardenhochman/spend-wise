@@ -1,9 +1,9 @@
 # SPEC-013: Merchant Normalization
 
 - **Spec ID**: SPEC-013
-- **Version**: 1
+- **Version**: 2
 - **Status**: current
-- **Last Updated**: 2026-02-28
+- **Last Updated**: 2026-10-17
 
 ---
 
@@ -47,4 +47,10 @@ During hash generation for deduplication, merchant names are also normalized:
 
 ## Management
 
-Aliases are currently managed via seed data. No user-facing alias management UI exists.
+Seeded aliases provide defaults; users can override or clear their own exact merchant labels.
+
+## User merchant labels
+
+Users can rename a merchant from a transaction, recurring charge, Runway event or obligation. A user label matches the entire normalized bank name (case and whitespace insensitive, with bank account/card suffixes removed). It applies retroactively and to future matching transactions. Exact user labels take priority over seeded aliases, including service defaults. Clearing a label restores seeded alias resolution or the original bank name. Labels never change transaction identity, bank names, deduplication or obligation matching rules.
+
+The human label is primary; the original bank name remains available as secondary text. Search matches both bank names and resolved labels. Blank labels are rejected; users explicitly clear labels instead.

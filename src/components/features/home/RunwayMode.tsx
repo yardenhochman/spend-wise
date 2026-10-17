@@ -1,3 +1,4 @@
+import MerchantName from '@/components/app/MerchantName'
 import { addDays, format, parseISO } from 'date-fns'
 import { ArrowDownLeft, ArrowUpRight, Wallet } from 'lucide-react'
 import { getHomeRunway } from '@/lib/api'
@@ -8,7 +9,7 @@ import { HomeResource, signedILS } from './HomeState'
 import RunwayChart from './RunwayChart'
 import { upcomingEvents } from './presentation'
 
-function Runway({ data }: { data: RunwayResponse }) {
+function Runway({ data, preview }: { data: RunwayResponse; preview: boolean }) {
   const events = upcomingEvents(data)
   const fortnight = format(addDays(parseISO(data.asOf), 14), 'yyyy-MM-dd')
   const windowEnd =
@@ -113,9 +114,11 @@ function Runway({ data }: { data: RunwayResponse }) {
                   />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-start text-sm font-medium">
-                    <bdi dir="auto">{event.label}</bdi>
-                  </p>
+                  <MerchantName
+                    name={event.label}
+                    rawMerchant={event.rawMerchant}
+                    preview={preview}
+                  />
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {format(parseISO(event.date), 'd MMM')}
                     {event.estimated && ' · Estimated'}
@@ -151,7 +154,7 @@ function Runway({ data }: { data: RunwayResponse }) {
 export default function RunwayMode() {
   return (
     <HomeResource load={getHomeRunway}>
-      {(data) => <Runway data={data} />}
+      {(data, preview) => <Runway data={data} preview={preview} />}
     </HomeResource>
   )
 }

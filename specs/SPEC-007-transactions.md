@@ -1,9 +1,9 @@
 # SPEC-007: Transaction Management
 
 - **Spec ID**: SPEC-007
-- **Version**: 2
+- **Version**: 3
 - **Status**: current
-- **Last Updated**: 2026-09-29
+- **Last Updated**: 2026-10-17
 
 ---
 
@@ -94,3 +94,7 @@ Each transaction row shows:
 ## Tagged expense review
 
 Search supports a shareable tag filter alongside category, merchant and dates. Transactions show original foreign amount and whether their ILS valuation is estimated. Refunds display as positive credits. Existing editing and tag assignment remain available.
+
+## Merchant renaming
+
+Each row offers Rename merchant through the shared name editor, prefilled with the displayed name and showing “Bank name: …”. Saving applies to all past and future transactions of that normalized merchant. Clearing restores the default name. The resolved display name is separate from the original merchant field; the table shows the label first and bank name below in muted text, both with automatic direction and bidirectional isolation. Search finds both the bank name and the human label.

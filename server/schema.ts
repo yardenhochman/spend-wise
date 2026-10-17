@@ -172,10 +172,14 @@ export const merchantAliases = sqliteTable(
     id: text('id').primaryKey(),
     raw_pattern: text('raw_pattern').notNull(),
     canonical_name: text('canonical_name').notNull(),
+    source: text('source').notNull().default('seed'),
     match_type: text('match_type').notNull().default('contains'),
   },
   (table) => [
-    uniqueIndex('idx_merchant_aliases_pattern').on(table.raw_pattern),
+    uniqueIndex('idx_merchant_aliases_pattern').on(
+      table.raw_pattern,
+      table.source,
+    ),
   ],
 )
 

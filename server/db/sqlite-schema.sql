@@ -115,7 +115,8 @@ CREATE TABLE IF NOT EXISTS merchant_aliases (
   id TEXT PRIMARY KEY,
   raw_pattern TEXT NOT NULL,
   canonical_name TEXT NOT NULL,
-  match_type TEXT NOT NULL DEFAULT 'contains'  -- 'exact', 'contains', 'regex'
+  match_type TEXT NOT NULL DEFAULT 'contains',  -- 'exact', 'contains', 'regex'
+  source TEXT NOT NULL DEFAULT 'seed'
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_merchant_aliases_pattern ON merchant_aliases(raw_pattern);
 
@@ -171,6 +172,7 @@ CREATE TABLE IF NOT EXISTS account_balances (
   PRIMARY KEY (account_key, source, as_of)
 );
 CREATE TABLE IF NOT EXISTS obligations (
+  name_is_user INTEGER NOT NULL DEFAULT 1,
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   kind TEXT NOT NULL CHECK(kind IN ('mortgage','tuition','tax','hoa','loan','utility','other')),

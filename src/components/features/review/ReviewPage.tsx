@@ -1,3 +1,4 @@
+import { MerchantDisplay } from '@/components/app/MerchantName'
 import { useState, useEffect } from 'react'
 import { useSearch, useNavigate } from '@tanstack/react-router'
 import { CheckCircle } from 'lucide-react'
@@ -247,7 +248,10 @@ export default function ReviewPage() {
                       {tx.date}
                     </TableCell>
                     <TableCell className="text-gray-100 font-medium" dir="auto">
-                      {tx.merchant}
+                      <MerchantDisplay
+                        name={tx.displayName ?? tx.merchant}
+                        rawMerchant={tx.merchant}
+                      />
                     </TableCell>
                     <TableCell
                       className={`text-right font-mono whitespace-nowrap tabular-nums ${

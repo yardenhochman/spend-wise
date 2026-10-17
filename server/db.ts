@@ -1,3 +1,4 @@
+import { migrateMerchantLabels } from './lib/merchant-labels.js'
 import fs from 'fs'
 import { INTERNAL_SETTLEMENT_MERCHANTS } from './lib/internal-settlements.js'
 import path from 'path'
@@ -28,6 +29,7 @@ const db = new Database(dbPath)
 db.pragma('journal_mode = WAL')
 
 db.exec(fs.readFileSync(schemaPath, 'utf8'))
+migrateMerchantLabels(db)
 
 const nowIso = (): string => new Date().toISOString()
 const toBool = (value: unknown): boolean => Boolean(value)
@@ -521,7 +523,9 @@ function seedMerchantAliases(): void {
 
   const existing = new Set(
     (
-      db.prepare('SELECT raw_pattern FROM merchant_aliases').all() as {
+      db
+        .prepare("SELECT raw_pattern FROM merchant_aliases WHERE source='seed'")
+        .all() as {
         raw_pattern: string
       }[]
     ).map((r) => r.raw_pattern),

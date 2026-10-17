@@ -160,6 +160,7 @@ export function recurringItems(
       return [
         {
           merchant: serviceName(latest),
+          rawMerchant: latest.merchant,
           amount: round(amount),
           cadence: yearly ? ('yearly' as const) : ('monthly' as const),
           annualized: round(amount * (yearly ? 1 : 12)),

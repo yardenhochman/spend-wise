@@ -1,29 +1,5 @@
 import type { HomeTransaction } from './types.js'
-export interface MerchantAlias {
-  raw_pattern: string
-  canonical_name: string
-  match_type: string
-}
-export function displayName(
-  merchant: string,
-  aliases: MerchantAlias[],
-): string {
-  const raw = merchant.toLowerCase()
-  return (
-    aliases.find((a) => {
-      const pattern = a.raw_pattern.toLowerCase()
-      if (a.match_type === 'exact') return raw === pattern
-      if (a.match_type === 'regex') {
-        try {
-          return new RegExp(a.raw_pattern, 'i').test(merchant)
-        } catch {
-          return false
-        }
-      }
-      return raw.includes(pattern)
-    })?.canonical_name ?? merchant
-  )
-}
+export { displayName, type MerchantAlias } from '../merchant-labels.js'
 export function transactionLabel(
   tx: Pick<HomeTransaction, 'merchant' | 'display_name'>,
 ): string {
@@ -63,6 +39,7 @@ export function serviceName(
   tx: Pick<HomeTransaction, 'merchant' | 'display_name'>,
 ): string {
   const label = transactionLabel(tx)
+  if (tx.display_name && tx.display_name !== tx.merchant) return label
   if (/^amazon[\s*.-]+prime\b/i.test(`${tx.merchant} ${label}`))
     return 'Amazon Prime'
   return /(?:google[\s*.-]*)?youtube[\s*.-]*premiu(?:m)?/i.test(

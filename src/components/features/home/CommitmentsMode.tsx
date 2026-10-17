@@ -1,3 +1,4 @@
+import MerchantName from '@/components/app/MerchantName'
 import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { match } from 'ts-pattern'
@@ -111,6 +112,32 @@ function Commitments({
     }
     setPendingId(null)
   }
+  async function confirmAll() {
+    setPendingId('all')
+    setConfirmationError(null)
+    const results = await Promise.all(
+      obligations
+        .filter((o) => !confirmed(o.id, o.confirmed))
+        .map(async (o) => ({
+          id: o.id,
+          result: await confirmHomeObligation(o.id, preview),
+        })),
+    )
+    setConfirmedIds((ids) => [
+      ...ids,
+      ...results.filter((r) => r.result.isOk()).map((r) => r.id),
+    ])
+    const failed = results.filter((r) => r.result.isErr()).length
+    if (failed)
+      setConfirmationError({
+        id: 'all',
+        message: `${failed} could not be confirmed. Try Confirm all again.`,
+      })
+    setAnnouncement(
+      `${results.length - failed} obligations confirmed. Payment history is unchanged.`,
+    )
+    setPendingId(null)
+  }
   return (
     <>
       <p className="mb-3 text-sm text-muted-foreground">
@@ -141,8 +168,23 @@ function Commitments({
           </span>
         </h2>
         {hasSuggestions && (
-          <p className="mt-3 rounded-lg bg-muted/40 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-            These were detected automatically — confirm the ones that are real
+          <div className="mt-3 rounded-lg bg-muted/40 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+            <p>
+              These were detected automatically — confirm the ones that are real
+            </p>
+            <Button
+              variant="ghost"
+              className="mt-1 min-h-11 min-w-11 px-2 text-xs text-primary"
+              disabled={pendingId !== null}
+              onClick={() => void confirmAll()}
+            >
+              {pendingId === 'all' ? 'Confirming…' : 'Confirm all'}
+            </Button>
+          </div>
+        )}
+        {confirmationError?.id === 'all' && (
+          <p role="alert" className="mt-2 text-xs text-destructive">
+            {confirmationError.message}
           </p>
         )}
         <div
@@ -170,9 +212,13 @@ function Commitments({
             <li key={item.id} className="py-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-start text-sm font-medium">
-                    <bdi dir="auto">{item.name}</bdi>
-                  </p>
+                  <MerchantName
+                    name={item.name}
+                    rawMerchant={item.rawMerchant}
+                    obligationId={item.id}
+                    preview={preview}
+                    disabled={pendingId !== null}
+                  />
                   <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                     {item.expectedAmount === null
                       ? 'Amount unknown'
@@ -336,9 +382,11 @@ function Commitments({
               className="flex justify-between gap-3 py-3"
             >
               <div className="min-w-0">
-                <p className="text-start text-sm font-medium">
-                  <bdi dir="auto">{item.merchant}</bdi>
-                </p>
+                <MerchantName
+                  name={item.merchant}
+                  rawMerchant={item.rawMerchant}
+                  preview={preview}
+                />
                 {item.flag && (
                   <p className="mt-1 text-xs text-muted-foreground">
                     {match(item.flag)

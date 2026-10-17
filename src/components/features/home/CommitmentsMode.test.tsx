@@ -28,7 +28,7 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
-function setup() {
+function setup(two = false) {
   const data = createHomeFixtures(new Date('2030-06-18T12:00:00Z')).commitments
   const base = data.obligations[0]
   data.obligations = [
@@ -40,6 +40,12 @@ function setup() {
       trail: [{ month: '2030-06', status: 'paid', amount: 100 }],
     },
   ]
+  if (two)
+    data.obligations.push({
+      ...data.obligations[0],
+      id: 'second',
+      name: 'Synthetic second obligation',
+    })
   vi.mocked(getHomeCommitments).mockReturnValue(
     okAsync({ data, source: 'api' }),
   )
@@ -94,4 +100,28 @@ describe('suggestion controls', () => {
     })
     expect(result.isOk()).toBe(true)
   })
+})
+
+it('confirms all, retains successful confirmations and retries only failures', async () => {
+  setup(true)
+  vi.mocked(confirmHomeObligation)
+    .mockReturnValueOnce(okAsync({}))
+    .mockReturnValueOnce(
+      errAsync({ type: 'network', message: 'Synthetic failure' }),
+    )
+  fireEvent.click(await screen.findByRole('button', { name: 'Confirm all' }))
+  await screen.findByRole('alert')
+  expect(
+    screen.queryByRole('button', { name: 'Confirm ועד לדוגמה' }),
+  ).toBeNull()
+  expect(
+    screen.getByRole('button', { name: 'Confirm Synthetic second obligation' }),
+  ).toBeTruthy()
+  vi.mocked(confirmHomeObligation).mockClear().mockReturnValueOnce(okAsync({}))
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm all' }))
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'Confirm all' })).toBeNull(),
+  )
+  expect(confirmHomeObligation).toHaveBeenCalledTimes(1)
+  expect(confirmHomeObligation).toHaveBeenCalledWith('second', false)
 })

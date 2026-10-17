@@ -28,6 +28,7 @@ export interface TransactionApiRow extends Omit<
   TransactionRow,
   'is_recurring_candidate' | 'is_internal'
 > {
+  displayName: string
   is_recurring_candidate: boolean
   is_internal: boolean
   category_name?: string | null

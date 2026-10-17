@@ -1,3 +1,4 @@
+import { readMerchantAliases } from '../merchant-labels.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import type Database from 'better-sqlite3'
@@ -19,12 +20,7 @@ import {
   matchesObligation,
 } from './obligations.js'
 import { buildRunway } from './runway.js'
-import {
-  cardIssuer,
-  displayName,
-  serviceKey,
-  type MerchantAlias,
-} from './labels.js'
+import { cardIssuer, displayName, serviceKey } from './labels.js'
 import { cardSettlementEvents, salaryEvents } from './settlements.js'
 import type {
   Balance,
@@ -56,6 +52,7 @@ export function readMortgageSnapshot(): MortgageSnapshot | null {
   return value as MortgageSnapshot
 }
 export interface StoredObligation {
+  name_is_user: number
   id: string
   name: string
   kind: Obligation['kind']
@@ -83,6 +80,7 @@ export function storedObligations(db: Database.Database): {
       .map((r) => ({
         id: r.id,
         name: r.name,
+        userNamed: !!r.name_is_user,
         kind: r.kind,
         expectedAmount: r.expected_amount,
         cadence: r.cadence,
@@ -98,11 +96,7 @@ export function storedObligations(db: Database.Database): {
 export function homeContext(deps: HomeDeps) {
   const { db, config } = deps
   const today = deps.today()
-  const aliases = db
-    .prepare(
-      'SELECT raw_pattern,canonical_name,match_type FROM merchant_aliases ORDER BY length(raw_pattern) DESC,raw_pattern',
-    )
-    .all() as MerchantAlias[]
+  const aliases = readMerchantAliases(db)
   const all = (
     db
       .prepare(
@@ -155,9 +149,20 @@ export function homeContext(deps: HomeDeps) {
               (o.kind !== 'mortgage' && s.matchPattern === o.matchPattern),
           ),
       ),
-    ].filter((o) => !cardIssuer(o.matchPattern) && !cardIssuer(o.name)),
+    ].filter((o) => !cardIssuer(o.matchPattern)),
     all,
   )
+  // Only explicitly renamed obligations override the current merchant label.
+  for (const o of obligations) {
+    const payment = all.find((t) => matchesObligation(o, t))
+    o.rawMerchant = payment?.merchant
+    if (
+      !o.userNamed &&
+      payment &&
+      (o.kind !== 'mortgage' || payment.display_name !== payment.merchant)
+    )
+      o.name = payment.display_name ?? payment.merchant
+  }
   const importRow = db
     .prepare(
       `SELECT MAX(f.imported_at) AS date FROM statement_files f JOIN transactions t ON t.source_file_id=f.id WHERE f.status='completed' AND t.id IN (SELECT value FROM json_each(?))`,
@@ -238,7 +243,10 @@ export function homeCommitments(
         deps.config?.graceDays ?? 5,
       ),
     ),
-    repayments: mortgageRepayments(ctx.mortgage),
+    repayments: mortgageRepayments(ctx.mortgage).map((r) => ({
+      ...r,
+      name: ctx.obligations.find((o) => o.id === r.id)?.name ?? r.name,
+    })),
     recurring: {
       annualTotal: round(items.reduce((s, i) => s + i.annualized, 0)),
       items,
@@ -307,7 +315,7 @@ export function homeBrief(deps: HomeDeps, ctx: HomeContext) {
       ),
     }
   })
-  return buildBrief(
+  const brief = buildBrief(
     ctx.today,
     ctx.rows,
     commitments.obligations,
@@ -318,4 +326,22 @@ export function homeBrief(deps: HomeDeps, ctx: HomeContext) {
     ctx.lastImportAt,
     deps.config?.runwayFloor ?? 0,
   )
+  return {
+    ...brief,
+    notices: brief.notices.map((n) => ({
+      ...n,
+      rawMerchants: [
+        ...new Set(
+          ctx.rows
+            .filter(
+              (t) =>
+                t.display_name &&
+                t.display_name !== t.merchant &&
+                `${n.title} ${n.body}`.includes(t.display_name),
+            )
+            .map((t) => t.merchant),
+        ),
+      ],
+    })),
+  }
 }

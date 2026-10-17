@@ -174,7 +174,14 @@ export function cardSettlementEvents(
         cycle.months.get(m) ?? median(recent.map(([, a]) => a)),
       )
       if (amount < 0)
-        result.push({ date, label, amount, kind: 'card', estimated: true })
+        result.push({
+          date,
+          label,
+          rawMerchant: latest?.merchant,
+          amount,
+          kind: 'card',
+          estimated: true,
+        })
     }
   }
   // Detail cycles replace issuer aggregates for that account. Adding both would
@@ -214,7 +221,14 @@ export function cardSettlementEvents(
     ) {
       const date = dueDate(m, day)
       if (date >= today && date <= end && !monthly.has(m) && amount < 0)
-        result.push({ date, label, amount, kind: 'card', estimated: true })
+        result.push({
+          date,
+          label,
+          rawMerchant: latest?.merchant,
+          amount,
+          kind: 'card',
+          estimated: true,
+        })
     }
   }
   return result
@@ -292,6 +306,10 @@ export function salaryEvents(
         result.push({
           date,
           label:
+            !(
+              txs.at(-1)!.display_name &&
+              txs.at(-1)!.display_name !== txs.at(-1)!.merchant
+            ) &&
             streams.filter(
               (ts) =>
                 transactionLabel(ts.at(-1)!) === transactionLabel(txs.at(-1)!),
@@ -299,6 +317,7 @@ export function salaryEvents(
               ? `Salary ${index + 1}`
               : transactionLabel(txs.at(-1)!),
           amount,
+          rawMerchant: txs.at(-1)!.merchant,
           kind: 'salary',
           estimated: true,
         })

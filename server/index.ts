@@ -1,3 +1,4 @@
+import { merchantFields, merchantSearch } from './lib/merchant-labels.js'
 import { mountHomeRoutes } from './routes/home.js'
 import { readMortgageSnapshot } from './lib/home/service.js'
 import { todayInIsrael } from './lib/home/dates.js'
@@ -59,7 +60,7 @@ import type {
   HomeInvestmentSnapshotRow,
 } from './types.js'
 
-const app = express()
+export const app = express()
 const upload = multer({ storage: multer.memoryStorage() })
 const port = Number(process.env.PORT ?? 4000)
 
@@ -71,6 +72,7 @@ const mapTransaction = (
   row
     ? {
         ...row,
+        ...merchantFields(db, row.merchant),
         is_recurring_candidate: toBool(row.is_recurring_candidate),
         is_internal: toBool(row.is_internal),
       }
@@ -1176,8 +1178,13 @@ app.get('/api/transactions', (req: Request, res: Response) => {
   }
 
   if (req.query.q) {
-    where.push('merchant LIKE ?')
-    params.push(`%${req.query.q}%`)
+    where.push(
+      '(merchant LIKE ? OR merchant IN (SELECT value FROM json_each(?)))',
+    )
+    params.push(
+      `%${req.query.q}%`,
+      JSON.stringify(merchantSearch(db, String(req.query.q))),
+    )
   }
 
   if (req.query.date_from) {
@@ -1840,7 +1847,10 @@ app.get('/api/insights/summary', (req: Request, res: Response) => {
     total_spend: Math.abs(mutableTotals.spend ?? 0),
     total_income: mutableTotals.income ?? 0,
     by_category: byCategoryEnriched,
-    top_merchants: topMerchants,
+    top_merchants: topMerchants.map((m) => ({
+      ...m,
+      ...merchantFields(db, m.merchant),
+    })),
     by_spending_type: bySpendingType,
     trending_up: trendingUp,
     trending_down: trendingDown,
@@ -1891,8 +1901,9 @@ app.get(
       .all(...allParams)
 
     const reviewIds = getReviewFlaggedIds(viewMode)
-    const items = (rows as { id: string }[]).map((r) => ({
+    const items = (rows as { id: string; merchant: string }[]).map((r) => ({
       ...r,
+      ...merchantFields(db, r.merchant),
       needs_review: reviewIds.has(r.id),
     }))
 
@@ -2267,7 +2278,7 @@ app.get('/api/recurring', (req: Request, res: Response) => {
         parseExcludedKinds(req.query.excluded_kinds),
         't',
       ),
-    ),
+    ).map((m) => ({ ...m, ...merchantFields(db, m.merchant) })),
   })
 })
 
@@ -2599,8 +2610,13 @@ const appRouter = router({
           params.push(input.category_id)
         }
         if (input.q) {
-          where.push('merchant LIKE ?')
-          params.push(`%${input.q}%`)
+          where.push(
+            '(merchant LIKE ? OR merchant IN (SELECT value FROM json_each(?)))',
+          )
+          params.push(
+            `%${input.q}%`,
+            JSON.stringify(merchantSearch(db, input.q)),
+          )
         }
         if (input.date_from) {
           where.push('date >= ?')
@@ -2866,7 +2882,10 @@ const appRouter = router({
           total_spend: Math.abs(totals?.spend ?? 0),
           total_income: totals?.income ?? 0,
           by_category: byCategory,
-          top_merchants: topMerchants,
+          top_merchants: topMerchants.map((m) => ({
+            ...m,
+            ...merchantFields(db, m.merchant),
+          })),
         }
       }),
 
@@ -2912,7 +2931,12 @@ const appRouter = router({
           )
           .all(...allParams)
 
-        return { items: rows }
+        return {
+          items: (rows as { merchant: string }[]).map((r) => ({
+            ...r,
+            ...merchantFields(db, r.merchant),
+          })),
+        }
       }),
 
     monthly: publicProcedure
@@ -3301,12 +3325,12 @@ app.get('/api/search', (req: Request, res: Response) => {
               COUNT(*) as tx_count
        FROM transactions t
        LEFT JOIN categories c ON c.id = t.category_id
-       WHERE t.merchant LIKE ? AND t.is_internal = 0
+       WHERE (t.merchant LIKE ? OR t.merchant IN (SELECT value FROM json_each(?))) AND t.is_internal = 0
        GROUP BY t.merchant
        ORDER BY tx_count DESC
        LIMIT 10`,
     )
-    .all(pattern) as {
+    .all(pattern, JSON.stringify(merchantSearch(db, q))) as {
     merchant: string
     category_name: string | null
     category_id: string | null
@@ -3320,7 +3344,13 @@ app.get('/api/search', (req: Request, res: Response) => {
     )
     .all(pattern) as { id: string; name: string }[]
 
-  res.json({ merchants, categories })
+  res.json({
+    merchants: merchants.map((m) => ({
+      ...m,
+      ...merchantFields(db, m.merchant),
+    })),
+    categories,
+  })
 })
 
 // ── Error handler ───────────────────────────────────────────────────────────
@@ -3334,6 +3364,8 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   })
 })
 
-app.listen(port, () => {
-  console.log(`API server running on http://localhost:${port}`)
-})
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(port, () => {
+    console.log(`API server running on http://localhost:${port}`)
+  })
+}

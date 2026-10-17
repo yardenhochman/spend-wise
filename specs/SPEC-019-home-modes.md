@@ -1,7 +1,7 @@
 # SPEC-019: Household Home Modes
 
 - **Spec ID**: SPEC-019
-- **Version**: 3
+- **Version**: 4
 - **Status**: current
 - **Last Updated**: 2026-10-17
 
@@ -66,3 +66,10 @@ All home modes cover household checking accounts and cards together. Committee a
 - SPEC-001: navigation and existing pages.
 - SPEC-006: superseded for home; legacy cashflow views remain supported elsewhere.
 - SPEC-018: shared presentation and controls.
+
+## Merchant labels and names
+
+- Obligation names, recurring merchants and Runway events have a 44px rename affordance opening a shared sheet with a prefilled label and “Bank name: …”. Names use automatic direction and bidirectional isolation; the bank name remains muted secondary text.
+- A merchant label applies to every past and future transaction with the same normalized bank merchant, including transaction search, Runway, Commitments and Brief. A saved obligation name takes priority over the merchant label, then the bank name.
+- Obligation editing offers “Use this name for all transactions from this merchant”, checked by default. Unchecking saves only the obligation name. Renaming a detected suggestion saves and confirms it while preserving its matching and payment history.
+- A Confirm all control confirms every displayed suggestion. Successful confirmations remain saved if another fails; failures remain visible and retryable. Confirmation does not alter payment history.

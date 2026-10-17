@@ -296,7 +296,17 @@ export function obligationTrail(
     return { month, status, amount }
   })
   const { id, name, kind, expectedAmount, cadence, confirmed } = o
-  return { id, name, kind, expectedAmount, cadence, confirmed, trail, note }
+  return {
+    id,
+    name,
+    kind,
+    expectedAmount,
+    cadence,
+    confirmed,
+    trail,
+    note,
+    rawMerchant: o.rawMerchant,
+  }
 }
 export function obligationEvents(
   obligations: Obligation[],
@@ -332,6 +342,7 @@ export function obligationEvents(
       events.push({
         date,
         label: o.name,
+        rawMerchant: latestPayment?.merchant,
         amount: -o.expectedAmount,
         kind:
           o.kind === 'mortgage'

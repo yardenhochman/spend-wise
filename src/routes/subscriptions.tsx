@@ -1,3 +1,4 @@
+import { MerchantDisplay } from '@/components/app/MerchantName'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
@@ -608,7 +609,10 @@ function SubscriptionsPage() {
                                       className="text-sm text-gray-100 truncate hover:underline"
                                       dir="auto"
                                     >
-                                      {item.merchant}
+                                      <MerchantDisplay
+                                        name={item.displayName ?? item.merchant}
+                                        rawMerchant={item.merchant}
+                                      />
                                     </Link>
                                     {isNew(item) && (
                                       <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/15 text-emerald-400">
@@ -762,7 +766,12 @@ function SubscriptionsPage() {
                                         className="text-sm text-gray-100 truncate hover:underline"
                                         dir="auto"
                                       >
-                                        {item.merchant}
+                                        <MerchantDisplay
+                                          name={
+                                            item.displayName ?? item.merchant
+                                          }
+                                          rawMerchant={item.merchant}
+                                        />
                                       </Link>
                                       {isNew(item) && (
                                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/15 text-emerald-400">

@@ -72,6 +72,11 @@ function NoticeCard({ notice }: { notice: Notice }) {
       >
         {notice.body}
       </p>
+      {notice.rawMerchants?.map((raw) => (
+        <p key={raw} className="mt-1 text-xs text-muted-foreground" dir="ltr">
+          Bank name: <bdi dir="auto">{raw}</bdi>
+        </p>
+      ))}
       {points.length > 1 && (
         <svg
           viewBox="0 0 320 48"

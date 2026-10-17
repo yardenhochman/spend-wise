@@ -1,3 +1,6 @@
+import MerchantName, {
+  merchantNamesChanged,
+} from '@/components/app/MerchantName'
 import { useState, useEffect, useCallback } from 'react'
 import {
   ChevronUp,
@@ -48,6 +51,12 @@ export default function TransactionTable() {
   } = useSearch({
     from: '/transactions',
   })
+  const [nameRevision, setNameRevision] = useState(0)
+  useEffect(() => {
+    const refresh = () => setNameRevision((v) => v + 1)
+    window.addEventListener(merchantNamesChanged, refresh)
+    return () => window.removeEventListener(merchantNamesChanged, refresh)
+  }, [])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [total, setTotal] = useState(0)
@@ -113,6 +122,7 @@ export default function TransactionTable() {
       })
       .finally(() => setLoading(false))
   }, [
+    nameRevision,
     page,
     sort,
     order,
@@ -401,7 +411,10 @@ export default function TransactionTable() {
                       {tx.date}
                     </TableCell>
                     <TableCell className="text-gray-100 font-medium" dir="auto">
-                      {tx.merchant}
+                      <MerchantName
+                        name={tx.displayName ?? tx.merchant}
+                        rawMerchant={tx.merchant}
+                      />
                     </TableCell>
                     <TableCell
                       className={`text-right font-mono whitespace-nowrap tabular-nums ${

@@ -143,10 +143,13 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
       results.push({
         id: `merchant-${m.merchant}`,
         type: 'merchant',
-        label: m.merchant,
-        sublabel: m.category_name
-          ? `${m.category_name} · ${m.tx_count} txns`
-          : `${m.tx_count} txns`,
+        label: m.displayName ?? m.merchant,
+        sublabel:
+          m.displayName && m.displayName !== m.merchant
+            ? m.merchant
+            : m.category_name
+              ? `${m.category_name} · ${m.tx_count} txns`
+              : `${m.tx_count} txns`,
         action: () =>
           navigate({ to: '/transactions', search: { q: m.merchant } }),
       })
@@ -235,11 +238,11 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 />
               )}
               <span className={type === 'merchant' ? 'truncate' : ''}>
-                {r.label}
+                <bdi dir="auto">{r.label}</bdi>
               </span>
               {r.sublabel && (
                 <span className="ml-auto text-xs text-gray-40 whitespace-nowrap shrink-0">
-                  {r.sublabel}
+                  <bdi dir="auto">{r.sublabel}</bdi>
                 </span>
               )}
               {idx === selectedIndex && (

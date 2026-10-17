@@ -443,3 +443,29 @@ export function dismissHomeObligation(id: string, preview: boolean) {
     method: 'DELETE',
   })
 }
+
+export function saveMerchantLabel(
+  rawMerchant: string,
+  label: string,
+  preview = false,
+) {
+  if (import.meta.env.DEV && preview) return okAsync<unknown, ApiError>({})
+  return safeFetchJson<unknown>('/merchant-labels', {
+    method: 'PUT',
+    body: JSON.stringify({ rawMerchant, label }),
+  })
+}
+export function clearMerchantLabel(rawMerchant: string, preview = false) {
+  if (import.meta.env.DEV && preview) return okAsync<unknown, ApiError>({})
+  return safeFetchJson<unknown>('/merchant-labels', {
+    method: 'DELETE',
+    body: JSON.stringify({ rawMerchant }),
+  })
+}
+export function renameObligation(id: string, name: string, preview = false) {
+  if (import.meta.env.DEV && preview) return okAsync<unknown, ApiError>({})
+  return safeFetchJson<unknown>(`/obligations/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name, confirmed: true }),
+  })
+}
