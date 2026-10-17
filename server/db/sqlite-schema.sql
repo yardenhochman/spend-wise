@@ -140,3 +140,15 @@ CREATE INDEX IF NOT EXISTS idx_investment_positions_report_id ON investment_posi
 CREATE INDEX IF NOT EXISTS idx_investment_positions_symbol ON investment_positions(symbol);
 CREATE INDEX IF NOT EXISTS idx_rules_priority ON rules(priority);
 CREATE INDEX IF NOT EXISTS idx_tag_rules_tag_id ON tag_rules(tag_id);
+
+-- Financial amount provenance; transactions.amount remains the ILS valuation.
+CREATE TABLE IF NOT EXISTS transaction_valuations (
+  transaction_id TEXT PRIMARY KEY REFERENCES transactions(id) ON DELETE CASCADE,
+  source_key TEXT UNIQUE NOT NULL,
+  original_amount REAL NOT NULL,
+  original_currency TEXT NOT NULL,
+  billing_currency TEXT NOT NULL,
+  valuation_status TEXT NOT NULL CHECK(valuation_status IN ('actual','estimated','allocated')),
+  valuation_note TEXT,
+  updated_at TEXT NOT NULL
+);
