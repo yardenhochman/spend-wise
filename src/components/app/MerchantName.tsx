@@ -19,9 +19,11 @@ export function MerchantDisplay({
   return (
     <>
       <bdi dir="auto">{name}</bdi>
-      <span className="block text-xs font-normal text-muted-foreground">
-        <bdi dir="auto">{rawMerchant}</bdi>
-      </span>
+      {rawMerchant.trim() !== name.trim() && (
+        <span className="block text-xs font-normal text-muted-foreground">
+          <bdi dir="auto">{rawMerchant}</bdi>
+        </span>
+      )}
     </>
   )
 }
@@ -112,7 +114,7 @@ export default function MerchantName({
           <bdi dir="auto">{name}</bdi>
         </p>
       )}
-      {rawMerchant && (
+      {rawMerchant && rawMerchant.trim() !== name.trim() && (
         <p className="text-start text-xs font-normal break-words text-muted-foreground">
           <bdi dir="auto">{rawMerchant}</bdi>
         </p>
