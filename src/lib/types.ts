@@ -303,3 +303,92 @@ export interface ReviewResponse {
   total: number
   flag_counts: Record<string, number>
 }
+
+// Household home API contract v1. Amounts are ILS; dates are ISO dates.
+export type HomeMode = 'runway' | 'commitments' | 'brief'
+
+export interface RunwayResponse {
+  asOf: string
+  openingBalance: number | null
+  balanceAsOf: string | null
+  accounts: { label: string; balance: number; asOf: string }[]
+  days: { date: string; balance: number }[]
+  events: {
+    date: string
+    label: string
+    amount: number
+    kind: 'salary' | 'mortgage' | 'card' | 'obligation' | 'other'
+    estimated: boolean
+  }[]
+  low: { date: string; balance: number } | null
+  nextSalary: { date: string; amount: number } | null
+  warnings: string[]
+}
+
+export type TrailStatus = 'paid' | 'due' | 'late' | 'unconfirmed' | 'none'
+
+export interface CommitmentsResponse {
+  months: string[]
+  obligations: {
+    id: string
+    name: string
+    kind: 'mortgage' | 'tuition' | 'tax' | 'hoa' | 'loan' | 'utility' | 'other'
+    expectedAmount: number | null
+    cadence: 'monthly' | 'bimonthly' | 'yearly' | 'irregular'
+    trail: { month: string; status: TrailStatus; amount: number | null }[]
+    note: string | null
+    confirmed: boolean
+  }[]
+  repayments: {
+    id: string
+    name: string
+    remaining: number
+    original: number | null
+    monthly: number | null
+    endDate: string | null
+    source: 'mortgage' | 'manual'
+  }[]
+  recurring: {
+    annualTotal: number
+    items: {
+      merchant: string
+      amount: number
+      cadence: 'monthly' | 'yearly' | 'other'
+      annualized: number
+      lastSeen: string
+      flag: 'new' | 'price-up' | 'price-down' | 'renewal-soon' | null
+      flagDetail: string | null
+    }[]
+  }
+}
+
+export interface BriefResponse {
+  weekOf: string
+  headline: string
+  notices: {
+    id: string
+    severity: 'action' | 'watch' | 'info'
+    title: string
+    body: string
+    chart: { points: number[] } | null
+    evidenceTransactionIds: number[]
+    agentPrompt: string
+  }[]
+  coverage: { uncategorizedShare: number; lastImportAt: string | null }
+}
+
+export interface ProjectsResponse {
+  projects: {
+    tag: string
+    label: string
+    net: number
+    status: 'open' | 'ended'
+    lastActivity: string | null
+  }[]
+}
+
+// Local transport metadata; not part of the server response.
+export interface HomeData<T> {
+  data: T
+  source: 'api' | 'fixtures'
+}

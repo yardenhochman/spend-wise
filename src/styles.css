@@ -123,3 +123,35 @@ code {
   font-family:
     source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
+
+/* Home uses the existing semantic palette. Legacy pages retain their theme. */
+.home-theme {
+  color-scheme: dark;
+  --border: var(--color-gray-20);
+  --muted-foreground: var(--color-gray-60);
+  --primary: var(--color-cat-education);
+}
+
+@media (prefers-color-scheme: light) {
+  .home-theme:not(.dark):not(.dark *) {
+    color-scheme: light;
+    --background: oklch(0.985 0.003 265);
+    --foreground: oklch(0.22 0.022 265);
+    --card: oklch(1 0 0);
+    --card-foreground: var(--foreground);
+    --popover: var(--card);
+    --popover-foreground: var(--foreground);
+    --primary: var(--color-brand-dark);
+    --secondary: oklch(0.94 0.008 265);
+    --secondary-foreground: var(--foreground);
+    --muted: oklch(0.93 0.008 265);
+    --muted-foreground: oklch(0.46 0.022 265);
+    --accent: var(--muted);
+    --accent-foreground: var(--foreground);
+    --border: oklch(0.88 0.01 265);
+    --input: var(--border);
+    --destructive: oklch(0.53 0.2 15);
+    --color-positive: #047857;
+    --color-cat-insurance: #925800;
+  }
+}

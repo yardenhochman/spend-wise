@@ -1,5 +1,10 @@
-import { err, ResultAsync } from 'neverthrow'
+import { err, okAsync, ResultAsync } from 'neverthrow'
 import type {
+  BriefResponse,
+  CommitmentsResponse,
+  HomeData,
+  ProjectsResponse,
+  RunwayResponse,
   ActionCardDefinition,
   Transaction,
   Category,
@@ -18,6 +23,8 @@ import type {
   CashAllocation,
   SearchResult,
 } from './types'
+
+import { createHomeFixtures } from './home-fixtures'
 
 const BASE = '/api'
 
@@ -366,4 +373,64 @@ export function getTagSummaries(params: {
   const query = new URLSearchParams()
   setSearchParams(query, params)
   return safeFetchJson<{ items: TagSummary[] }>(`/tag-summaries?${query}`)
+}
+
+// Fixtures are opt-in, or a per-endpoint 404 fallback, exclusively in dev.
+// Network, parse, and non-404 errors always remain errors.
+function getHome<T>(
+  url: string,
+  fixture: () => T,
+): ResultAsync<HomeData<T>, ApiError> {
+  if (
+    import.meta.env.DEV &&
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('fixtures') === '1'
+  ) {
+    return okAsync({ data: fixture(), source: 'fixtures' })
+  }
+  return safeFetchJson<T>(url)
+    .map((data): HomeData<T> => ({ data, source: 'api' }))
+    .orElse((error) =>
+      import.meta.env.DEV && error.type === 'http' && error.status === 404
+        ? okAsync<HomeData<T>, ApiError>({
+            data: fixture(),
+            source: 'fixtures',
+          })
+        : err(error),
+    )
+}
+
+export function getHomeRunway() {
+  return getHome<RunwayResponse>(
+    '/home/runway?days=56',
+    () => createHomeFixtures().runway,
+  )
+}
+
+export function getHomeCommitments() {
+  return getHome<CommitmentsResponse>(
+    '/home/commitments?months=6',
+    () => createHomeFixtures().commitments,
+  )
+}
+
+export function getHomeBrief() {
+  return getHome<BriefResponse>('/home/brief', () => createHomeFixtures().brief)
+}
+
+export function getHomeProjects() {
+  return getHome<ProjectsResponse>(
+    '/home/projects',
+    () => createHomeFixtures().projects,
+  )
+}
+
+export function confirmHomeObligation(id: string, preview: boolean) {
+  // Synthetic confirmations stay in the preview; never write fake IDs to the API.
+  if (import.meta.env.DEV && preview)
+    return okAsync<unknown, ApiError>({ confirmed: true })
+  return safeFetchJson<unknown>(`/obligations/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ confirmed: true }),
+  })
 }
