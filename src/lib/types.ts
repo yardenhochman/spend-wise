@@ -7,7 +7,19 @@ export interface Tag {
   icon: string | null
 }
 
+export interface TagSummary extends Tag {
+  start_date: string | null; end_date: string | null; review_note: string | null
+  gross:number; refunds:number; net:number; count:number; estimated_count:number
+  subtags:{id:string;name:string;amount:number}[]
+  days:number|null; per_day:number|null; categories:{ name:string; amount:number }[]
+}
+
 export interface Transaction {
+  original_amount?: number
+  original_currency?: string
+  valuation_status?: 'actual' | 'estimated' | 'allocated'
+  valuation_note?: string
+
   id: string
   date: string
   merchant: string

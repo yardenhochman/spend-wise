@@ -1,4 +1,5 @@
 import express from 'express'
+import { summarizeTaggedAmounts, type TaggedAmount } from './lib/tag-summary.js'
 import type { Request, Response, NextFunction } from 'express'
 import multer from 'multer'
 import fs from 'fs'
@@ -845,6 +846,17 @@ app.get('/api/tags', (_req: Request, res: Response) => {
   res.json({ items: rows })
 })
 
+app.get('/api/tag-summaries', (req: Request, res: Response) => {
+  const scope = buildViewModeFilter((req.query.view_mode as string) || 'routine')
+  const tags = db.prepare(`SELECT tags.*, p.start_date,p.end_date,p.review_note FROM tags LEFT JOIN tag_profiles p ON p.tag_id=tags.id ORDER BY p.start_date IS NULL, tags.name`).all() as (TagRow & { start_date:string|null;end_date:string|null;review_note:string|null })[]
+  const items=tags.map(tag=>{
+    const rows=db.prepare(`SELECT t.amount,c.name AS category_name,v.valuation_status FROM transactions t JOIN transaction_tags tt ON tt.transaction_id=t.id LEFT JOIN categories c ON c.id=t.category_id LEFT JOIN transaction_valuations v ON v.transaction_id=t.id WHERE tt.tag_id=? AND t.is_internal=0 ${scope.sql}`).all(tag.id,...scope.params) as TaggedAmount[]
+    const subtags=db.prepare(`SELECT st.id,st.name,-SUM(t.amount) AS amount FROM transactions t JOIN transaction_tags tt ON tt.transaction_id=t.id JOIN transaction_tags detail ON detail.transaction_id=t.id JOIN tags st ON st.id=detail.tag_id WHERE tt.tag_id=? AND detail.tag_id<>? AND t.is_internal=0 ${scope.sql} GROUP BY st.id ORDER BY amount DESC`).all(tag.id,tag.id,...scope.params)
+    return {...tag,...summarizeTaggedAmounts(rows,tag.start_date,tag.end_date),subtags}
+  })
+  res.json({items})
+})
+
 app.post('/api/tags', (req: Request, res: Response) => {
   const name = (req.body as { name?: string })?.name?.trim()
   if (!name) {
@@ -994,6 +1006,11 @@ app.get('/api/transactions', (req: Request, res: Response) => {
     params.push(req.query.account_id as string)
   }
 
+  if (req.query.tag_id) {
+    where.push('EXISTS (SELECT 1 FROM transaction_tags ft WHERE ft.transaction_id=t.id AND ft.tag_id=?)')
+    params.push(req.query.tag_id as string)
+  }
+
   if (req.query.category_id) {
     where.push('category_id = ?')
     params.push(req.query.category_id as string)
@@ -1034,9 +1051,10 @@ app.get('/api/transactions', (req: Request, res: Response) => {
 
   const rows = db
     .prepare(
-      `SELECT t.*, c.name as category_name
+      `SELECT t.*, c.name as category_name, v.original_amount, v.original_currency, v.valuation_status, v.valuation_note
        FROM transactions t
        LEFT JOIN categories c ON c.id = t.category_id
+       LEFT JOIN transaction_valuations v ON v.transaction_id=t.id
        ${whereSql} ${viewMode.sql}
        ORDER BY ${sort} ${order} LIMIT ? OFFSET ?`,
     )

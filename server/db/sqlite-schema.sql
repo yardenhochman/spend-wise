@@ -152,3 +152,9 @@ CREATE TABLE IF NOT EXISTS transaction_valuations (
   valuation_note TEXT,
   updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS tag_profiles (
+  tag_id TEXT PRIMARY KEY REFERENCES tags(id) ON DELETE CASCADE,
+  start_date TEXT,
+  end_date TEXT,
+  review_note TEXT
+);

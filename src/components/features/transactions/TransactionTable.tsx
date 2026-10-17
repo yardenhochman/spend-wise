@@ -41,7 +41,7 @@ import {
 export default function TransactionTable() {
   const { mode } = useViewMode()
   const navigate = useNavigate()
-  const { category_id: urlCategoryId, q: urlQuery } = useSearch({
+  const { category_id: urlCategoryId, q: urlQuery, tag_id: urlTagId } = useSearch({
     from: '/transactions',
   })
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -54,7 +54,7 @@ export default function TransactionTable() {
   const [search, setSearch] = useState(urlQuery ?? '')
   const filterCategory = urlCategoryId ?? ''
   const setFilterCategory = (val: string) => {
-    navigate({ to: '/transactions', search: { category_id: val || undefined } })
+    navigate({ to: '/transactions', search: { tag_id: urlTagId, category_id: val || undefined, q: search || undefined } })
   }
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -89,6 +89,7 @@ export default function TransactionTable() {
       order,
       q: search || undefined,
       category_id: filterCategory || undefined,
+      tag_id: urlTagId,
       date_from: dateFrom || undefined,
       date_to: dateTo || undefined,
       exclude_internal: hideInternal ? '1' : undefined,
@@ -105,6 +106,7 @@ export default function TransactionTable() {
     order,
     search,
     filterCategory,
+    urlTagId,
     dateFrom,
     dateTo,
     hideInternal,
@@ -226,6 +228,11 @@ export default function TransactionTable() {
             className="pl-9 bg-surface border-gray-10 text-gray-100"
           />
         </div>
+        <select aria-label="Filter by tag" value={urlTagId ?? ''}
+          onChange={e=>{setPage(0);navigate({to:'/transactions',search:{tag_id:e.target.value||undefined,category_id:filterCategory||undefined,q:search||undefined}})}}
+          className="px-3 py-2 bg-surface border border-gray-10 rounded-[14px] text-gray-100 text-sm max-w-full">
+          <option value="">All tags</option>{tags.map(tag=><option key={tag.id} value={tag.id}>{tag.name}</option>)}
+        </select>
         <select
           value={filterCategory}
           onChange={(e) => {
@@ -370,10 +377,11 @@ export default function TransactionTable() {
                         tx.amount < 0 ? 'text-negative' : 'text-positive'
                       }`}
                     >
-                      {prefix}₪{intStr}
+                      {tx.valuation_status === 'estimated' && <span title={tx.valuation_note}>≈ </span>}{prefix}₪{intStr}
                       <span className="text-[0.75em] opacity-60">
                         .{decStr}
                       </span>
+                      {tx.original_currency && tx.original_currency !== 'ILS' && <div className="text-xs text-gray-60 font-normal">{tx.original_amount?.toLocaleString('en-IL')} {tx.original_currency}{tx.valuation_status === 'estimated' ? ' · Estimated' : ''}</div>}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">

@@ -4,6 +4,7 @@ import type {
   Transaction,
   Category,
   Tag,
+  TagSummary,
   ImportResult,
   InvestmentsSummary,
   InsightsSummary,
@@ -109,6 +110,7 @@ export async function getInvestmentsSummary(
 }
 
 export async function getTransactions(params: {
+  tag_id?: string
   limit?: number
   offset?: number
   sort?: string
@@ -346,4 +348,9 @@ export async function bulkUpdateRecurringCategory(
 // ── Global Search ──────────────────────────────────────────────────────────
 export function globalSearch(q: string): ResultAsync<SearchResult, ApiError> {
   return safeFetchJson<SearchResult>(`/search?q=${encodeURIComponent(q)}`)
+}
+
+export function getTagSummaries(params: { view_mode: ViewMode }) {
+  const query = new URLSearchParams(params)
+  return safeFetchJson<{items:TagSummary[]}>(`/tag-summaries?${query}`)
 }

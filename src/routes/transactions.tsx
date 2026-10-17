@@ -2,12 +2,14 @@ import { createFileRoute } from '@tanstack/react-router'
 import TransactionTable from '@/components/features/transactions/TransactionTable'
 
 type TransactionSearch = {
+  tag_id?: string
   category_id?: string
   q?: string
 }
 
 export const Route = createFileRoute('/transactions')({
   validateSearch: (search: Record<string, unknown>): TransactionSearch => ({
+    tag_id: typeof search.tag_id === 'string' ? search.tag_id : undefined,
     category_id:
       typeof search.category_id === 'string' ? search.category_id : undefined,
     q: typeof search.q === 'string' ? search.q : undefined,
