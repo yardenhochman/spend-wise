@@ -46,34 +46,34 @@ This causes:
 
 **NEEDS (Fixed/Essential)**
 
-| Group      | Category         | Type       | Notes                                                                |
-| ---------- | ---------------- | ---------- | -------------------------------------------------------------------- |
-| Housing    | Rent / Mortgage  | Fixed      | Monthly housing payment                                              |
-| Housing    | Home Maintenance | Fixed      | Va'ad bayit, repairs, appliances (currently in "Other")              |
-| Utilities  | Utilities        | Fixed      | IEC, water, arnona, gas                                              |
+| Group      | Category         | Type       | Notes                                                                          |
+| ---------- | ---------------- | ---------- | ------------------------------------------------------------------------------ |
+| Housing    | Rent / Mortgage  | Fixed      | Monthly housing payment                                                        |
+| Housing    | Home Maintenance | Fixed      | Va'ad bayit, repairs, appliances (currently in "Other")                        |
+| Utilities  | Utilities        | Fixed      | IEC, water, arnona, gas                                                        |
 | Utilities  | Telecom          | Fixed      | Mobile and internet providers — currently split across Subscriptions/Utilities |
-| Insurance  | Insurance        | Fixed      | Health supplement, life, contents                                    |
-| Financial  | Bank Fees        | Fixed      | Account fees, ATM fees                                               |
-| Financial  | Loan Payments    | Fixed      | Non-mortgage loans                                                   |
-| Healthcare | Healthcare       | Semi-fixed | Kupat Holim, pharmacy, dental, specialists                           |
+| Insurance  | Insurance        | Fixed      | Health supplement, life, contents                                              |
+| Financial  | Bank Fees        | Fixed      | Account fees, ATM fees                                                         |
+| Financial  | Loan Payments    | Fixed      | Non-mortgage loans                                                             |
+| Healthcare | Healthcare       | Semi-fixed | Kupat Holim, pharmacy, dental, specialists                                     |
 
 **WANTS (Discretionary)**
 
-| Group        | Category          | Type          | Notes                                            |
-| ------------ | ----------------- | ------------- | ------------------------------------------------ |
-| Food & Drink | Groceries         | Flexible      | Shuk, supermarkets, mini-markets                 |
-| Food & Drink | Dining            | Discretionary | Restaurants, cafes, bars, delivery (Wolt)        |
-| Transport    | Transport         | Flexible      | Scooters, car-share, public transit, taxis       |
-| Shopping     | Shopping          | Discretionary | Clothing, electronics, home goods                |
-| Shopping     | Online Shopping   | Discretionary | AliExpress, Amazon, Temu                         |
-| Lifestyle    | Entertainment     | Discretionary | Movies, concerts, events                         |
-| Lifestyle    | Subscriptions     | Semi-fixed    | Streaming, apps, news                            |
-| Lifestyle    | Sports & Fitness  | Discretionary | Gym, physio                                      |
-| Lifestyle    | Personal Care     | Discretionary | Hair, grooming (currently in Shopping/Other)     |
-| Lifestyle    | Pets              | Discretionary | Pet food and vet care                            |
-| Travel       | Trips Abroad      | Discretionary | Flights, hotels, in-trip spending                |
-| Gifts        | Gifts & Donations | Discretionary | Gift checks, charity (new category)              |
-| Education    | Education         | Discretionary | Courses, books                                   |
+| Group        | Category          | Type          | Notes                                        |
+| ------------ | ----------------- | ------------- | -------------------------------------------- |
+| Food & Drink | Groceries         | Flexible      | Shuk, supermarkets, mini-markets             |
+| Food & Drink | Dining            | Discretionary | Restaurants, cafes, bars, delivery (Wolt)    |
+| Transport    | Transport         | Flexible      | Scooters, car-share, public transit, taxis   |
+| Shopping     | Shopping          | Discretionary | Clothing, electronics, home goods            |
+| Shopping     | Online Shopping   | Discretionary | AliExpress, Amazon, Temu                     |
+| Lifestyle    | Entertainment     | Discretionary | Movies, concerts, events                     |
+| Lifestyle    | Subscriptions     | Semi-fixed    | Streaming, apps, news                        |
+| Lifestyle    | Sports & Fitness  | Discretionary | Gym, physio                                  |
+| Lifestyle    | Personal Care     | Discretionary | Hair, grooming (currently in Shopping/Other) |
+| Lifestyle    | Pets              | Discretionary | Pet food and vet care                        |
+| Travel       | Trips Abroad      | Discretionary | Flights, hotels, in-trip spending            |
+| Gifts        | Gifts & Donations | Discretionary | Gift checks, charity (new category)          |
+| Education    | Education         | Discretionary | Courses, books                               |
 
 **STRUCTURAL (Excluded from spending analysis)**
 
@@ -225,6 +225,7 @@ Many merchants are already identifiable as monthly recurring. Auto-detect: same 
 ## Data Quality Quick Wins
 
 Periodically review misclassified, uncategorized, and "Other" transactions. Common patterns:
+
 - Currency exchange in Entertainment → Trips Abroad
 - Streaming/news subscriptions in Entertainment → Subscriptions
 - Appliance installments in Other → Home Maintenance

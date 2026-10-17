@@ -42,7 +42,10 @@ function parseArgs(argv: string[]): CliOptions {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--input' || arg.startsWith('--input=')) {
-      options.input = readValue(arg === '--input' ? argv[++i] : arg.slice('--input='.length), '--input')
+      options.input = readValue(
+        arg === '--input' ? argv[++i] : arg.slice('--input='.length),
+        '--input',
+      )
     } else if (arg === '--force' || arg === '--all') {
       options.staleOnly = false
     } else if (arg === '--stale-only') {
@@ -124,14 +127,21 @@ function parseLastJsonObject(output: string): unknown {
 async function main(): Promise<void> {
   try {
     const options = parseArgs(process.argv.slice(2))
-    const inputIsDirectory = options.input ? (await stat(options.input)).isDirectory() : false
+    const inputIsDirectory = options.input
+      ? (await stat(options.input)).isDirectory()
+      : false
     if (options.input && !inputIsDirectory) {
       const matched: RefreshSourceId[] = []
       for (const source of DEFAULT_REFRESH_SOURCES) {
-        try { await readBrokerInput(options.input, source.id); matched.push(source.id) } catch {}
+        try {
+          await readBrokerInput(options.input, source.id)
+          matched.push(source.id)
+        } catch {}
       }
-      if (matched.length === 0) throw new Error('Invalid or stale broker input file')
-      if (options.sourceIds.some(id => !matched.includes(id))) throw new Error('Broker input source mismatch')
+      if (matched.length === 0)
+        throw new Error('Invalid or stale broker input file')
+      if (options.sourceIds.some((id) => !matched.includes(id)))
+        throw new Error('Broker input source mismatch')
       if (!options.sourceIds.length) options.sourceIds = matched
     }
     let state = await readRefreshState(options.statePath)
@@ -151,9 +161,17 @@ async function main(): Promise<void> {
 
     for (const source of plan) {
       const startedAt = new Date().toISOString()
-      const inputFile = options.input ? (inputIsDirectory ? path.join(options.input, 'leumi.json') : options.input) : undefined
-      const input = inputFile ? await readBrokerInput(inputFile, source.id) : undefined
-      const result = await runCommand(commandForSource(source, options, inputFile))
+      const inputFile = options.input
+        ? inputIsDirectory
+          ? path.join(options.input, 'leumi.json')
+          : options.input
+        : undefined
+      const input = inputFile
+        ? await readBrokerInput(inputFile, source.id)
+        : undefined
+      const result = await runCommand(
+        commandForSource(source, options, inputFile),
+      )
       const finishedAt = new Date().toISOString()
       state = recordRefreshResult({
         state,
@@ -164,7 +182,8 @@ async function main(): Promise<void> {
         summary: result.summary,
         error: result.output,
       })
-      if (input && result.success) state.sources[source.id]!.lastSuccessAt = input.fetched_at
+      if (input && result.success)
+        state.sources[source.id]!.lastSuccessAt = input.fetched_at
       await writeRefreshState(state, options.statePath)
       results.push({
         source: source.id,

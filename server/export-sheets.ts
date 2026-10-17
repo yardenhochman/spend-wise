@@ -182,9 +182,7 @@ async function main() {
     )
   } else {
     // Create new spreadsheet
-    const modeLabel = opts.mode
-      ? ` (${opts.mode})`
-      : ''
+    const modeLabel = opts.mode ? ` (${opts.mode})` : ''
     const dateRange =
       opts.from || opts.to
         ? ` ${opts.from || '...'} to ${opts.to || '...'}`

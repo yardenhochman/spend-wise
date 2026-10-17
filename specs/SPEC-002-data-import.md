@@ -85,7 +85,6 @@ For portfolio snapshot imports:
 - Portfolio-level totals are recalculated from the imported snapshot
 - Historical snapshots remain available for trend views
 
-
 ## Leumi Mortgage Refresh
 
 The existing authenticated mortgage refresh also retrieves each mortgage's loan

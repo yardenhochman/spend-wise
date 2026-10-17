@@ -45,7 +45,10 @@ describe('extractLeumiMortgageSnapshot', () => {
                 },
               ],
               partnerDetailsItems: [
-                { partnerName: 'Synthetic Borrower', roleInPartnership: 'Borrower' },
+                {
+                  partnerName: 'Synthetic Borrower',
+                  roleInPartnership: 'Borrower',
+                },
               ],
             },
           },

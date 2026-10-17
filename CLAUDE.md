@@ -148,21 +148,22 @@ server/
 
 ### Preferred Libraries (don't reinvent)
 
-| Concern | Library | Location | Key exports |
-|---|---|---|---|
-| Currency formatting | dinero.js | `src/utils/currency.ts` | `formatILS()`, `splitAmount()` |
-| Date formatting | date-fns | `src/utils/dates.ts` | `formatMonthLabel()`, `formatMonthAbbr()`, `formatChartLabel()` |
-| Class merging | clsx + tailwind-merge | `src/lib/utils.ts` | `cn()` |
-| Debounce/throttle | `@tanstack/react-pacer` | direct import | `useDebouncedCallback`, `useAsyncDebouncedCallback` |
-| Validation | Zod v4 | server-side only | `z.object()`, `z.string()`, etc. |
-| Error results | neverthrow | `src/lib/api.ts` | `safeFetchJson()`, `ResultAsync`, `ApiError` |
-| Union matching | ts-pattern | direct import | `match()`, `.with()`, `.exhaustive()` |
+| Concern             | Library                 | Location                | Key exports                                                     |
+| ------------------- | ----------------------- | ----------------------- | --------------------------------------------------------------- |
+| Currency formatting | dinero.js               | `src/utils/currency.ts` | `formatILS()`, `splitAmount()`                                  |
+| Date formatting     | date-fns                | `src/utils/dates.ts`    | `formatMonthLabel()`, `formatMonthAbbr()`, `formatChartLabel()` |
+| Class merging       | clsx + tailwind-merge   | `src/lib/utils.ts`      | `cn()`                                                          |
+| Debounce/throttle   | `@tanstack/react-pacer` | direct import           | `useDebouncedCallback`, `useAsyncDebouncedCallback`             |
+| Validation          | Zod v4                  | server-side only        | `z.object()`, `z.string()`, etc.                                |
+| Error results       | neverthrow              | `src/lib/api.ts`        | `safeFetchJson()`, `ResultAsync`, `ApiError`                    |
+| Union matching      | ts-pattern              | direct import           | `match()`, `.with()`, `.exhaustive()`                           |
 
 **Before adding a new library**, check this table — there's likely an existing solution.
 
 ### Shared Utilities Checklist
 
 Before writing new helpers, check these files:
+
 - `src/utils/currency.ts` — any money formatting
 - `src/utils/dates.ts` — any date formatting or month math
 - `src/lib/constants.ts` — category colors (`CATEGORY_COLORS`, `CATEGORY_HEX_COLORS`)

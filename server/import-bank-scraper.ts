@@ -56,7 +56,8 @@ function parseArgs(argv: string[]): CliOptions {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--input' || arg.startsWith('--input=')) {
-      options.input = arg === '--input' ? argv[++i] : arg.slice('--input='.length)
+      options.input =
+        arg === '--input' ? argv[++i] : arg.slice('--input='.length)
       if (!options.input) throw new Error('--input requires a file')
     } else if (arg === '--write') {
       options.write = true
@@ -298,9 +299,14 @@ function buildTransactionNotes(
 async function main(): Promise<void> {
   try {
     const options = parseArgs(process.argv.slice(2))
-    const input = options.input ? await readBrokerInput(options.input, 'leumi-bank') : null
+    const input = options.input
+      ? await readBrokerInput(options.input, 'leumi-bank')
+      : null
     const { accounts, from } = input
-      ? { accounts: input.payload.accounts as unknown[], from: options.from ?? String(input.coverage.requested_from) }
+      ? {
+          accounts: input.payload.accounts as unknown[],
+          from: options.from ?? String(input.coverage.requested_from),
+        }
       : await scrape(options)
     const summary = importTransactions({
       provider: options.provider,
@@ -308,7 +314,23 @@ async function main(): Promise<void> {
       write: options.write,
       accounts,
     })
-    console.log(JSON.stringify({ ...summary, ...(input ? { broker: { fetchedAt: input.fetched_at, coverage: input.coverage } } : {}) }, null, 2))
+    console.log(
+      JSON.stringify(
+        {
+          ...summary,
+          ...(input
+            ? {
+                broker: {
+                  fetchedAt: input.fetched_at,
+                  coverage: input.coverage,
+                },
+              }
+            : {}),
+        },
+        null,
+        2,
+      ),
+    )
   } catch (error) {
     console.error(
       JSON.stringify(

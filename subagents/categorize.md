@@ -8,48 +8,48 @@ You are a financial transaction categorization agent for an Israeli household ex
 
 ## Available Categories
 
-| Category                    | Description                                                       | Examples                                                           |
-| --------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------ |
-| **Routine categories**      |                                                                   |                                                                    |
-| Groceries                   | Supermarkets, food stores, butchers, produce                      | שופרסל, רמי לוי, יוחננוף, produce markets                          |
-| Dining                      | Restaurants, cafes, takeout, food delivery                        | מסעדה, קפה, wolt, תן ביס, פיצה                                     |
-| Transport                   | Fuel, parking, taxis, public transit, fines                       | פז, דלק, gett, yango, רב-קו, חנייה                                 |
-| Housing                     | Rent, standing orders, vaad bayit, management fees                | הוראת קבע, ועד בית, rent transfer                                  |
-| Utilities                   | Electric, water, gas, internet, phone                             | חשמל, מים, בזק, פרטנר                                              |
-| Healthcare                  | Doctors, pharmacy, dental, physio, contacts                       | כללית, סופר פארם, pharmacy                                         |
-| Insurance                   | All insurance types                                               | ביטוח, הראל, מגדל                                                  |
-| Education                   | Courses, schools, books, lectures                                 | קורס, לימודים, ספרים                                               |
-| Entertainment               | Leisure, events, festivals, bars                                  | קולנוע, בר, הופעה, gaming                                          |
-| Sports & Fitness            | Gym, yoga, country club, trampoline, dancing                      | קאנטרי, יוגה, gym, studio                                          |
-| Workshops & Retreats        | Self-work, retreats, personal growth workshops                    |                                                                    |
-| Shopping                    | Clothing, home goods, customs, gifts (not online/pets)            | zara, מ.האוצר-אגף המכס                                             |
-| Online Shopping             | Online marketplace purchases                                      | amazon, aliexpress, newegg, temu                                   |
-| Home Setup                  | Furniture & home setup (IKEA during move-in period)               | ikea                                                               |
-| Home Maintenance            | Appliances, repairs, furnishings for existing home                | מחסני חשמל, carpet, freezer                                        |
-| Pets                        | Pet food, supplies, vet visits                                    | pet store, vet clinic                                              |
-| Subscriptions               | Recurring digital services, memberships, donations                | spotify, openai, news, nonprofit                                   |
-| Trips Abroad                | Foreign travel: flights, lodging, local spending, forex purchases | AIRBNB, KIWI.COM, רכישת מטח                                        |
-| Salary                      | Employment income, national insurance grants                      | משכורת, מענק לאומי                                                 |
-| Transfer                    | Bank transfers, P2P payments (Bit, PayBox)                        | העברה, bit, paybox                                                 |
-| Cash Withdrawal             | ATM withdrawals                                                   | כספומט, משיכת מזומן                                                |
-| Bank Fees                   | Bank charges, commissions, interest, card fees, tax               | עמלה, דמי כרטיס, ריבית, מס הכנסה                                   |
-| Taxes                       | Income tax, Bituach Leumi catch-ups, government obligations       | מס הכנסה עצמאיים, ביטוח לאומי רב ספק                               |
-| Savings                     | Savings deposits, investments                                     | חיסכון, השקעה                                                      |
-| **Home mode categories**    | _(excluded from routine, shown only in home mode)_                |                                                                    |
-| Property Price              | Actual purchase installments paid to seller                       | שובר תשלום, payment voucher, seller transfer                       |
-| Purchase Tax                | Government property purchase tax (מס רכישה)                       | רשויות אינטרנט, מס רכישה                                           |
-| Closing Costs               | Lawyer, land registry, inspection, document fees                  | טאבו, lawyer, inspection, guarantee fees                           |
-| Home Loans                  | Loan setup, repayments, principal payments                        | העמדת הלוואה, פרעון הלוואה, תשלום קרן                              |
-| Mortgage                    | Monthly mortgage payments                                         | לאומי למשכנת-י |
-| Home Purchase               | Catch-all for other home purchase costs                           | (rarely used after breakdown)                                      |
-| **Wedding mode categories** | _(excluded from routine, shown only in wedding mode)_             |                                                                    |
-| Venue & Catering            | Wedding venue and food                                            |                                                                    |
-| Music & Sound               | DJ, sound system, musicians                                       |                                                                    |
-| Photography                 | Photographer, videographer                                        |                                                                    |
-| Wedding Planning            | Event organizer, coordinator                                      |                                                                    |
-| Wedding Loan                | Loan repayments for wedding financing                             | פרעון הלוואה                                                       |
-| Wedding                     | Catch-all for other wedding expenses                              | User-confirmed event costs |
-| Other                       | Anything that doesn't fit above                                   |                                                                    |
+| Category                    | Description                                                       | Examples                                     |
+| --------------------------- | ----------------------------------------------------------------- | -------------------------------------------- |
+| **Routine categories**      |                                                                   |                                              |
+| Groceries                   | Supermarkets, food stores, butchers, produce                      | שופרסל, רמי לוי, יוחננוף, produce markets    |
+| Dining                      | Restaurants, cafes, takeout, food delivery                        | מסעדה, קפה, wolt, תן ביס, פיצה               |
+| Transport                   | Fuel, parking, taxis, public transit, fines                       | פז, דלק, gett, yango, רב-קו, חנייה           |
+| Housing                     | Rent, standing orders, vaad bayit, management fees                | הוראת קבע, ועד בית, rent transfer            |
+| Utilities                   | Electric, water, gas, internet, phone                             | חשמל, מים, בזק, פרטנר                        |
+| Healthcare                  | Doctors, pharmacy, dental, physio, contacts                       | כללית, סופר פארם, pharmacy                   |
+| Insurance                   | All insurance types                                               | ביטוח, הראל, מגדל                            |
+| Education                   | Courses, schools, books, lectures                                 | קורס, לימודים, ספרים                         |
+| Entertainment               | Leisure, events, festivals, bars                                  | קולנוע, בר, הופעה, gaming                    |
+| Sports & Fitness            | Gym, yoga, country club, trampoline, dancing                      | קאנטרי, יוגה, gym, studio                    |
+| Workshops & Retreats        | Self-work, retreats, personal growth workshops                    |                                              |
+| Shopping                    | Clothing, home goods, customs, gifts (not online/pets)            | zara, מ.האוצר-אגף המכס                       |
+| Online Shopping             | Online marketplace purchases                                      | amazon, aliexpress, newegg, temu             |
+| Home Setup                  | Furniture & home setup (IKEA during move-in period)               | ikea                                         |
+| Home Maintenance            | Appliances, repairs, furnishings for existing home                | מחסני חשמל, carpet, freezer                  |
+| Pets                        | Pet food, supplies, vet visits                                    | pet store, vet clinic                        |
+| Subscriptions               | Recurring digital services, memberships, donations                | spotify, openai, news, nonprofit             |
+| Trips Abroad                | Foreign travel: flights, lodging, local spending, forex purchases | AIRBNB, KIWI.COM, רכישת מטח                  |
+| Salary                      | Employment income, national insurance grants                      | משכורת, מענק לאומי                           |
+| Transfer                    | Bank transfers, P2P payments (Bit, PayBox)                        | העברה, bit, paybox                           |
+| Cash Withdrawal             | ATM withdrawals                                                   | כספומט, משיכת מזומן                          |
+| Bank Fees                   | Bank charges, commissions, interest, card fees, tax               | עמלה, דמי כרטיס, ריבית, מס הכנסה             |
+| Taxes                       | Income tax, Bituach Leumi catch-ups, government obligations       | מס הכנסה עצמאיים, ביטוח לאומי רב ספק         |
+| Savings                     | Savings deposits, investments                                     | חיסכון, השקעה                                |
+| **Home mode categories**    | _(excluded from routine, shown only in home mode)_                |                                              |
+| Property Price              | Actual purchase installments paid to seller                       | שובר תשלום, payment voucher, seller transfer |
+| Purchase Tax                | Government property purchase tax (מס רכישה)                       | רשויות אינטרנט, מס רכישה                     |
+| Closing Costs               | Lawyer, land registry, inspection, document fees                  | טאבו, lawyer, inspection, guarantee fees     |
+| Home Loans                  | Loan setup, repayments, principal payments                        | העמדת הלוואה, פרעון הלוואה, תשלום קרן        |
+| Mortgage                    | Monthly mortgage payments                                         | לאומי למשכנת-י                               |
+| Home Purchase               | Catch-all for other home purchase costs                           | (rarely used after breakdown)                |
+| **Wedding mode categories** | _(excluded from routine, shown only in wedding mode)_             |                                              |
+| Venue & Catering            | Wedding venue and food                                            |                                              |
+| Music & Sound               | DJ, sound system, musicians                                       |                                              |
+| Photography                 | Photographer, videographer                                        |                                              |
+| Wedding Planning            | Event organizer, coordinator                                      |                                              |
+| Wedding Loan                | Loan repayments for wedding financing                             | פרעון הלוואה                                 |
+| Wedding                     | Catch-all for other wedding expenses                              | User-confirmed event costs                   |
+| Other                       | Anything that doesn't fit above                                   |                                              |
 
 ## How to Use This Agent
 

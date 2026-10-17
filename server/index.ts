@@ -970,14 +970,37 @@ app.get('/api/tags', (_req: Request, res: Response) => {
 })
 
 app.get('/api/tag-summaries', (req: Request, res: Response) => {
-  const scope = buildFinancialFilter((req.query.view_mode as string) || 'cashflow', parseExcludedKinds(req.query.excluded_kinds))
-  const tags = db.prepare(`SELECT tags.*, p.start_date,p.end_date,p.review_note FROM tags LEFT JOIN tag_profiles p ON p.tag_id=tags.id ORDER BY p.start_date IS NULL, tags.name`).all() as (TagRow & { start_date:string|null;end_date:string|null;review_note:string|null })[]
-  const items=tags.map(tag=>{
-    const rows=db.prepare(`SELECT t.amount,c.name AS category_name,v.valuation_status FROM transactions t JOIN transaction_tags tt ON tt.transaction_id=t.id LEFT JOIN categories c ON c.id=t.category_id LEFT JOIN transaction_valuations v ON v.transaction_id=t.id WHERE tt.tag_id=? AND t.is_internal=0 ${scope.sql}`).all(tag.id,...scope.params) as TaggedAmount[]
-    const subtags=db.prepare(`SELECT st.id,st.name,-SUM(t.amount) AS amount FROM transactions t JOIN transaction_tags tt ON tt.transaction_id=t.id JOIN transaction_tags detail ON detail.transaction_id=t.id JOIN tags st ON st.id=detail.tag_id WHERE tt.tag_id=? AND detail.tag_id<>? AND t.is_internal=0 ${scope.sql} GROUP BY st.id ORDER BY amount DESC`).all(tag.id,tag.id,...scope.params)
-    return {...tag,...summarizeTaggedAmounts(rows,tag.start_date,tag.end_date),subtags}
+  const scope = buildFinancialFilter(
+    (req.query.view_mode as string) || 'cashflow',
+    parseExcludedKinds(req.query.excluded_kinds),
+  )
+  const tags = db
+    .prepare(
+      `SELECT tags.*, p.start_date,p.end_date,p.review_note FROM tags LEFT JOIN tag_profiles p ON p.tag_id=tags.id ORDER BY p.start_date IS NULL, tags.name`,
+    )
+    .all() as (TagRow & {
+    start_date: string | null
+    end_date: string | null
+    review_note: string | null
+  })[]
+  const items = tags.map((tag) => {
+    const rows = db
+      .prepare(
+        `SELECT t.amount,c.name AS category_name,v.valuation_status FROM transactions t JOIN transaction_tags tt ON tt.transaction_id=t.id LEFT JOIN categories c ON c.id=t.category_id LEFT JOIN transaction_valuations v ON v.transaction_id=t.id WHERE tt.tag_id=? AND t.is_internal=0 ${scope.sql}`,
+      )
+      .all(tag.id, ...scope.params) as TaggedAmount[]
+    const subtags = db
+      .prepare(
+        `SELECT st.id,st.name,-SUM(t.amount) AS amount FROM transactions t JOIN transaction_tags tt ON tt.transaction_id=t.id JOIN transaction_tags detail ON detail.transaction_id=t.id JOIN tags st ON st.id=detail.tag_id WHERE tt.tag_id=? AND detail.tag_id<>? AND t.is_internal=0 ${scope.sql} GROUP BY st.id ORDER BY amount DESC`,
+      )
+      .all(tag.id, tag.id, ...scope.params)
+    return {
+      ...tag,
+      ...summarizeTaggedAmounts(rows, tag.start_date, tag.end_date),
+      subtags,
+    }
   })
-  res.json({items})
+  res.json({ items })
 })
 
 app.post('/api/tags', (req: Request, res: Response) => {
@@ -1130,7 +1153,9 @@ app.get('/api/transactions', (req: Request, res: Response) => {
   }
 
   if (req.query.tag_id) {
-    where.push('EXISTS (SELECT 1 FROM transaction_tags ft WHERE ft.transaction_id=t.id AND ft.tag_id=?)')
+    where.push(
+      'EXISTS (SELECT 1 FROM transaction_tags ft WHERE ft.transaction_id=t.id AND ft.tag_id=?)',
+    )
     params.push(req.query.tag_id as string)
   }
 

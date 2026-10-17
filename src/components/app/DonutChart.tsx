@@ -106,9 +106,7 @@ export function DonutChart({
             textAnchor="middle"
             className="fill-gray-60 text-[10px]"
           >
-            {formatILS(
-              slices.find((s) => s.name === selected)?.value ?? 0,
-            )}
+            {formatILS(slices.find((s) => s.name === selected)?.value ?? 0)}
           </text>
         </>
       ) : (

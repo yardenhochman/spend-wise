@@ -49,6 +49,7 @@ Update the registry in `specs/README.md` to add a row for the v2 file with statu
 Edit the `.v2.md` file to describe the **desired** product behavior after your changes. This is what you're building toward. Keep it product-focused — no implementation details.
 
 Changes should be clearly motivated:
+
 - What new behavior is being added?
 - What existing behavior is changing?
 - What stays the same?
@@ -83,6 +84,7 @@ Update `specs/README.md` to reflect the new version number and remove the v2 row
 **Trigger**: User requests a new feature or change to existing behavior.
 
 **Workflow**:
+
 1. Identify which spec(s) are affected
 2. Read the current spec(s) to understand existing behavior
 3. Claim the spec (copy → v2, set `in-progress`)
@@ -90,6 +92,7 @@ Update `specs/README.md` to reflect the new version number and remove the v2 row
 5. Finalize the spec when done
 
 **Key files**:
+
 - `specs/SPEC-*.md` — what to build
 - `CLAUDE.md` — how to build it (tech stack, file locations, conventions)
 
@@ -100,6 +103,7 @@ Update `specs/README.md` to reflect the new version number and remove the v2 row
 **Workflow**: See [`subagents/categorize.md`](./subagents/categorize.md)
 
 **Summary**:
+
 1. Extract uncategorized merchants from DB
 2. Classify merchants in batches by name, amount, and frequency signals
 3. Apply categories via SQL (confidence > 70% only)
@@ -112,6 +116,7 @@ Update `specs/README.md` to reflect the new version number and remove the v2 row
 **Trigger**: User asks to audit data quality or fix categorization issues.
 
 **Workflow**:
+
 1. Read SPEC-010 (Data Quality Review) to understand the flag types
 2. Query the review endpoint for flagged transactions
 3. Propose fixes (category reassignment, internal flagging, tag application)
@@ -124,6 +129,7 @@ Update `specs/README.md` to reflect the new version number and remove the v2 row
 **Trigger**: User asks questions about their spending, trends, or patterns.
 
 **Workflow**:
+
 1. Read SPEC-008 (Insights) and SPEC-006 (View Modes) to understand available data
 2. Query the appropriate API endpoints
 3. Present findings in the context of the active view mode
@@ -138,10 +144,12 @@ Update `specs/README.md` to reflect the new version number and remove the v2 row
 Multiple agents can work simultaneously as long as they claim **different** specs. The `in-progress` status in `specs/README.md` acts as a lightweight lock.
 
 **Safe to parallelize**:
+
 - Agent A works on SPEC-008 (Insights) while Agent B works on SPEC-012 (Search)
 - One agent implements while another reviews data quality
 
 **Must serialize**:
+
 - Two agents both need to change SPEC-007 (Transactions) — one must wait
 - A feature touches both SPEC-004 and SPEC-005 — one agent claims both
 
@@ -149,13 +157,13 @@ Multiple agents can work simultaneously as long as they claim **different** spec
 
 Some specs reference others. When changing a spec, check if dependent specs need updating:
 
-| If you change... | Also check... |
-|---|---|
+| If you change...          | Also check...                                               |
+| ------------------------- | ----------------------------------------------------------- |
 | SPEC-004 (Categorization) | SPEC-005 (Tags), SPEC-006 (View Modes), SPEC-008 (Insights) |
-| SPEC-006 (View Modes) | SPEC-008 (Insights), SPEC-009 (Recurring) |
-| SPEC-002 (Data Import) | SPEC-003 (Deduplication), SPEC-004 (Categorization) |
-| SPEC-007 (Transactions) | SPEC-010 (Review), SPEC-008 (Insights) |
-| SPEC-018 (Design System) | All UI-facing specs |
+| SPEC-006 (View Modes)     | SPEC-008 (Insights), SPEC-009 (Recurring)                   |
+| SPEC-002 (Data Import)    | SPEC-003 (Deduplication), SPEC-004 (Categorization)         |
+| SPEC-007 (Transactions)   | SPEC-010 (Review), SPEC-008 (Insights)                      |
+| SPEC-018 (Design System)  | All UI-facing specs                                         |
 
 ### Reading vs. Writing
 
@@ -167,12 +175,12 @@ Some specs reference others. When changing a spec, check if dependent specs need
 
 ## Quick Reference
 
-| Task | Start here |
-|---|---|
-| Add a new feature | Read affected spec → claim → write spec changes → implement → finalize |
-| Fix a bug | Read affected spec to understand expected behavior → fix → no spec change needed unless behavior was wrong |
-| Categorize transactions | `subagents/categorize.md` |
-| Understand what the app does | `specs/README.md` → individual spec files |
-| Understand how to build | `CLAUDE.md` |
-| Add a new category | SPEC-004 + checklist in `CLAUDE.md` ("Adding Categories") |
-| Change the design system | SPEC-018 + `src/styles.css` + `src/lib/constants.ts` |
+| Task                         | Start here                                                                                                 |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Add a new feature            | Read affected spec → claim → write spec changes → implement → finalize                                     |
+| Fix a bug                    | Read affected spec to understand expected behavior → fix → no spec change needed unless behavior was wrong |
+| Categorize transactions      | `subagents/categorize.md`                                                                                  |
+| Understand what the app does | `specs/README.md` → individual spec files                                                                  |
+| Understand how to build      | `CLAUDE.md`                                                                                                |
+| Add a new category           | SPEC-004 + checklist in `CLAUDE.md` ("Adding Categories")                                                  |
+| Change the design system     | SPEC-018 + `src/styles.css` + `src/lib/constants.ts`                                                       |

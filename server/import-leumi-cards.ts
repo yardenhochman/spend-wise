@@ -14,7 +14,11 @@ import {
   type LeumiCardSpendWiseTransaction,
 } from './lib/leumi-card-import.js'
 import { resolveCredentialsFromEnv } from './lib/bank-scraper-import.js'
-import { buildFuzzyIndex, findFuzzyDuplicate, normalizeMerchant } from './lib/dedup.js'
+import {
+  buildFuzzyIndex,
+  findFuzzyDuplicate,
+  normalizeMerchant,
+} from './lib/dedup.js'
 import type { RuleRow } from './types.js'
 
 type CliOptions = {
@@ -41,7 +45,6 @@ type ImportSummary = ScrapeSummary & {
   deduped: number
   crossSourceDupes: number
   legacyForeignNeedsReview: number
-
 }
 
 type ScrapedCardAccount = {
@@ -103,7 +106,8 @@ function parseArgs(argv: string[]): CliOptions {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--input' || arg.startsWith('--input=')) {
-      options.input = arg === '--input' ? argv[++i] : arg.slice('--input='.length)
+      options.input =
+        arg === '--input' ? argv[++i] : arg.slice('--input='.length)
       if (!options.input) throw new Error('--input requires a file')
     } else if (arg === '--write') {
       options.write = true
@@ -252,8 +256,11 @@ async function scrapeCardsFromPage(
 
     for (const month of months) {
       const activity = await selectMonthAndReadActivity(page, month)
-      const selectedCards = cards.filter(card => isRecord(activity) && card.cardIndex === activity.CardIndex)
-      if (selectedCards.length !== 1) throw new Error('Cannot identify selected card in activity response')
+      const selectedCards = cards.filter(
+        (card) => isRecord(activity) && card.cardIndex === activity.CardIndex,
+      )
+      if (selectedCards.length !== 1)
+        throw new Error('Cannot identify selected card in activity response')
       for (const card of selectedCards) {
         const transactions = extractLeumiCardTransactions(
           activity as Parameters<typeof extractLeumiCardTransactions>[0],
@@ -409,7 +416,9 @@ async function getMonthLabels(page: PuppeteerPage): Promise<string[]> {
   })
 }
 
-function extractCardMetadata(value: unknown): { cardLast4Digits: string; cardIndex: number }[] {
+function extractCardMetadata(
+  value: unknown,
+): { cardLast4Digits: string; cardIndex: number }[] {
   if (!isRecord(value)) return []
   const cards = value.CreditCardsItems
   if (!Array.isArray(cards)) return []
@@ -417,9 +426,15 @@ function extractCardMetadata(value: unknown): { cardLast4Digits: string; cardInd
     .map((card) => {
       if (!isRecord(card) || typeof card.CardLast4Digits !== 'string')
         return null
-      return { cardLast4Digits: card.CardLast4Digits, cardIndex: Number(card.CardIndex) }
+      return {
+        cardLast4Digits: card.CardLast4Digits,
+        cardIndex: Number(card.CardIndex),
+      }
     })
-    .filter((card): card is { cardLast4Digits: string; cardIndex: number } => card !== null)
+    .filter(
+      (card): card is { cardLast4Digits: string; cardIndex: number } =>
+        card !== null,
+    )
 }
 
 function monthStart(value: string): string {
@@ -474,11 +489,12 @@ function importTransactions(args: {
     deduped: 0,
     crossSourceDupes: 0,
     legacyForeignNeedsReview: 0,
-
   }
 
   const existingTxns = db
-    .prepare('SELECT date, amount, merchant, raw_hash FROM transactions t WHERE NOT EXISTS (SELECT 1 FROM transaction_valuations v WHERE v.transaction_id=t.id)')
+    .prepare(
+      'SELECT date, amount, merchant, raw_hash FROM transactions t WHERE NOT EXISTS (SELECT 1 FROM transaction_valuations v WHERE v.transaction_id=t.id)',
+    )
     .all() as {
     date: string
     amount: number
@@ -512,19 +528,31 @@ function importTransactions(args: {
     }
 
     for (const tx of transactions) {
-      const linked = db.prepare('SELECT transaction_id FROM transaction_valuations WHERE source_key = ?').get(tx.sourceKey)
-      if (linked) { summary.deduped += 1; continue }
+      const linked = db
+        .prepare(
+          'SELECT transaction_id FROM transaction_valuations WHERE source_key = ?',
+        )
+        .get(tx.sourceKey)
+      if (linked) {
+        summary.deduped += 1
+        continue
+      }
       // Old imports may contain a foreign amount mislabeled ILS. Never add a
       // newly-valued duplicate on top; require an audited reconciliation first.
-      if (tx.billingCurrency !== 'ILS' && existingTxns.some(old =>
-        Math.abs(Math.abs(old.amount) - Math.abs(tx.originalAmount)) < .01 &&
-        Math.abs(Date.parse(old.date)-Date.parse(tx.date)) <= 86400000 &&
-        normalizeMerchant(old.merchant).toUpperCase() === normalizeMerchant(tx.merchant).toUpperCase()
-      )) {
+      if (
+        tx.billingCurrency !== 'ILS' &&
+        existingTxns.some(
+          (old) =>
+            Math.abs(Math.abs(old.amount) - Math.abs(tx.originalAmount)) <
+              0.01 &&
+            Math.abs(Date.parse(old.date) - Date.parse(tx.date)) <= 86400000 &&
+            normalizeMerchant(old.merchant).toUpperCase() ===
+              normalizeMerchant(tx.merchant).toUpperCase(),
+        )
+      ) {
         summary.legacyForeignNeedsReview += 1
         continue
       }
-
 
       if (existingHashes.has(tx.raw_hash)) {
         summary.deduped += 1
@@ -559,7 +587,20 @@ function importTransactions(args: {
 
       if (response.changes > 0) {
         summary.inserted += 1
-        db.prepare(`INSERT INTO transaction_valuations (transaction_id,source_key,original_amount,original_currency,billing_currency,valuation_status,valuation_note,updated_at) VALUES (?,?,?,?,?,?,?,?)`).run(transactionId, tx.sourceKey, tx.originalAmount, tx.originalCurrency, tx.billingCurrency, tx.valuationStatus, tx.valuationStatus === 'estimated' ? 'BOI representative rate at purchase date; fees and final settlement not verified' : 'Card statement ILS amount', nowIso())
+        db.prepare(
+          `INSERT INTO transaction_valuations (transaction_id,source_key,original_amount,original_currency,billing_currency,valuation_status,valuation_note,updated_at) VALUES (?,?,?,?,?,?,?,?)`,
+        ).run(
+          transactionId,
+          tx.sourceKey,
+          tx.originalAmount,
+          tx.originalCurrency,
+          tx.billingCurrency,
+          tx.valuationStatus,
+          tx.valuationStatus === 'estimated'
+            ? 'BOI representative rate at purchase date; fees and final settlement not verified'
+            : 'Card statement ILS amount',
+          nowIso(),
+        )
         existingHashes.add(tx.raw_hash)
       } else {
         summary.deduped += 1
@@ -595,9 +636,14 @@ function sleep(ms: number): Promise<void> {
 async function main(): Promise<void> {
   try {
     const options = parseArgs(process.argv.slice(2))
-    const input = options.input ? await readBrokerInput(options.input, 'leumi-cards') : null
+    const input = options.input
+      ? await readBrokerInput(options.input, 'leumi-cards')
+      : null
     const { accounts, scrape } = input
-      ? { accounts: input.payload.accounts as ScrapedCardAccount[], scrape: input.payload.scrape as ScrapeSummary }
+      ? {
+          accounts: input.payload.accounts as ScrapedCardAccount[],
+          scrape: input.payload.scrape as ScrapeSummary,
+        }
       : await scrapeLeumiCards(options)
     const summary = importTransactions({
       from: input ? String(input.coverage.requested_from) : options.from,
@@ -605,7 +651,23 @@ async function main(): Promise<void> {
       accounts,
       scrape,
     })
-    console.log(JSON.stringify({ ...summary, ...(input ? { broker: { fetchedAt: input.fetched_at, coverage: input.coverage } } : {}) }, null, 2))
+    console.log(
+      JSON.stringify(
+        {
+          ...summary,
+          ...(input
+            ? {
+                broker: {
+                  fetchedAt: input.fetched_at,
+                  coverage: input.coverage,
+                },
+              }
+            : {}),
+        },
+        null,
+        2,
+      ),
+    )
   } catch (error) {
     console.error(
       JSON.stringify(

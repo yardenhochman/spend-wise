@@ -76,7 +76,8 @@ function parseArgs(argv: string[]): CliOptions {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--input' || arg.startsWith('--input=')) {
-      options.input = arg === '--input' ? argv[++i] : arg.slice('--input='.length)
+      options.input =
+        arg === '--input' ? argv[++i] : arg.slice('--input='.length)
       if (!options.input) throw new Error('--input requires a file')
     } else if (arg === '--write') {
       options.write = true
@@ -99,7 +100,9 @@ function parseArgs(argv: string[]): CliOptions {
   }
 
   if (!options.input && !options.accountSuffix) {
-    throw new Error('Set SPENDWISE_LEUMI_ACCOUNT_SUFFIX or --account-suffix before scraping')
+    throw new Error(
+      'Set SPENDWISE_LEUMI_ACCOUNT_SUFFIX or --account-suffix before scraping',
+    )
   }
   return options
 }
@@ -270,8 +273,12 @@ async function writeSnapshots(
     normalizedPath,
     `${JSON.stringify(result.snapshot, null, 2)}\n`,
   )
-  if (result.rawResponse !== null) await writeFile(rawPath, `${JSON.stringify(result.rawResponse, null, 2)}\n`)
-  return { normalizedPath, rawPath: result.rawResponse === null ? undefined : rawPath }
+  if (result.rawResponse !== null)
+    await writeFile(rawPath, `${JSON.stringify(result.rawResponse, null, 2)}\n`)
+  return {
+    normalizedPath,
+    rawPath: result.rawResponse === null ? undefined : rawPath,
+  }
 }
 
 function buildSummary(args: {
@@ -321,7 +328,9 @@ function sleep(ms: number): Promise<void> {
 async function main(): Promise<void> {
   try {
     const options = parseArgs(process.argv.slice(2))
-    const input = options.input ? await readBrokerInput(options.input, 'leumi-mortgages') : null
+    const input = options.input
+      ? await readBrokerInput(options.input, 'leumi-mortgages')
+      : null
     const result: MortgageScrapeResult = input
       ? { snapshot: input.payload as LeumiMortgageSnapshot, rawResponse: null }
       : await scrapeLeumiMortgages(options)

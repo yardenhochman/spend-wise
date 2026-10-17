@@ -203,10 +203,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     }
   }
 
-  const renderGroup = (
-    type: PaletteItem['type'],
-    heading: string,
-  ) => {
+  const renderGroup = (type: PaletteItem['type'], heading: string) => {
     const items = results.filter((r) => r.type === type)
     if (items.length === 0) return null
 
@@ -274,10 +271,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
         {/* Search input */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-10">
           {isLoading ? (
-            <Loader2
-              size={18}
-              className="text-brand shrink-0 animate-spin"
-            />
+            <Loader2 size={18} className="text-brand shrink-0 animate-spin" />
           ) : (
             <Search size={18} className="text-gray-40 shrink-0" />
           )}

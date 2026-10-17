@@ -359,7 +359,11 @@ export function globalSearch(q: string): ResultAsync<SearchResult, ApiError> {
   return safeFetchJson<SearchResult>(`/search?q=${encodeURIComponent(q)}`)
 }
 
-export function getTagSummaries(params: { view_mode:ViewMode;excluded_kinds:ViewExclusion[] }) {
-  const query=new URLSearchParams();setSearchParams(query,params)
-  return safeFetchJson<{items:TagSummary[]}>(`/tag-summaries?${query}`)
+export function getTagSummaries(params: {
+  view_mode: ViewMode
+  excluded_kinds: ViewExclusion[]
+}) {
+  const query = new URLSearchParams()
+  setSearchParams(query, params)
+  return safeFetchJson<{ items: TagSummary[] }>(`/tag-summaries?${query}`)
 }

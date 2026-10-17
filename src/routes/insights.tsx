@@ -7,11 +7,18 @@ import MonthlyDrilldown from '@/components/features/insights/MonthlyDrilldown'
 import { getAnalysisReport } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 
-export const Route = createFileRoute('/insights')({ validateSearch: (s: Record<string, unknown>): { view?: 'tags' } => ({view:s.view==='tags'?'tags':undefined}), component: InsightsPage })
+export const Route = createFileRoute('/insights')({
+  validateSearch: (s: Record<string, unknown>): { view?: 'tags' } => ({
+    view: s.view === 'tags' ? 'tags' : undefined,
+  }),
+  component: InsightsPage,
+})
 
 function InsightsPage() {
   const [exporting, setExporting] = useState(false)
-  const [view, setView] = useState<'summary' | 'monthly' | 'tags'>(Route.useSearch().view === 'tags' ? 'tags' : 'summary')
+  const [view, setView] = useState<'summary' | 'monthly' | 'tags'>(
+    Route.useSearch().view === 'tags' ? 'tags' : 'summary',
+  )
 
   const handleExport = async () => {
     setExporting(true)
@@ -73,10 +80,26 @@ function InsightsPage() {
             <Calendar size={16} />
             Monthly
           </Button>
-          <Button variant={view==='tags'?'default':'outline'} onClick={()=>setView('tags')} className={view==='tags'?'bg-brand text-white':'bg-surface text-gray-60 border-gray-20'}>Tags & trips</Button>
+          <Button
+            variant={view === 'tags' ? 'default' : 'outline'}
+            onClick={() => setView('tags')}
+            className={
+              view === 'tags'
+                ? 'bg-brand text-white'
+                : 'bg-surface text-gray-60 border-gray-20'
+            }
+          >
+            Tags & trips
+          </Button>
         </div>
 
-        {view === 'tags' ? <TagSummary /> : view === 'summary' ? <SpendingBreakdown /> : <MonthlyDrilldown />}
+        {view === 'tags' ? (
+          <TagSummary />
+        ) : view === 'summary' ? (
+          <SpendingBreakdown />
+        ) : (
+          <MonthlyDrilldown />
+        )}
       </div>
     </div>
   )

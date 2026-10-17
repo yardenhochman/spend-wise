@@ -304,7 +304,9 @@ const INTERNAL_EXACT_MERCHANTS = [
 
 function flagInternalTransfers(): void {
   // These known bank settlement descriptions do not depend on categorization.
-  const settle = db.prepare('UPDATE transactions SET is_internal=1 WHERE merchant=?')
+  const settle = db.prepare(
+    'UPDATE transactions SET is_internal=1 WHERE merchant=?',
+  )
   for (const merchant of INTERNAL_SETTLEMENT_MERCHANTS) settle.run(merchant)
 
   const transferCatId = getCategoryId('Transfer')
