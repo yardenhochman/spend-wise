@@ -370,10 +370,25 @@ describe('anything_off', () => {
       if (!f.evidence.length) expect(f.noEvidenceReason).toBeTruthy()
   })
   it('keeps Brief notice evidence resolvable despite string IDs', () => {
-    const uncategorized = anythingOff(deps).findings.filter((f) =>
-      f.title.includes('uncategorized'),
-    )
-    for (const f of uncategorized) expect(f.evidenceCount).toBeGreaterThan(0)
+    // Enough uncategorized history to raise Brief's coverage notice, which lists transaction IDs.
+    const writer = new Database(path.join(dir, 'synthetic.sqlite'))
+    writer
+      .prepare(
+        "UPDATE transactions SET category_id=NULL WHERE amount<0 AND date<'2030-06-01'",
+      )
+      .run()
+    writer.close()
+    const coverage = anythingOff(deps).findings.find(
+      (f) => f.source === 'brief' && f.title.includes('uncategorized'),
+    )!
+    expect(coverage.evidenceCount).toBeGreaterThan(0)
+    expect(coverage.evidence[0].id).toMatch(/^tx-/)
+  })
+  it('resolves obligation evidence on Brief commitment notices', () => {
+    const mismatch = anythingOff(deps).findings.find((f) =>
+      f.title.includes('payment differs'),
+    )!
+    expect(mismatch.evidenceCount).toBeGreaterThan(0)
   })
 })
 
