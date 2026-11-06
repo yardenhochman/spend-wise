@@ -560,6 +560,8 @@ describe('deterministic brief and recurring adapter', () => {
         [],
         runway,
         '2030-06-18',
+        0,
+        [],
       ).notices.map((n) => n.title),
     ).toEqual(['100% of recent transactions are uncategorized'])
     expect(
@@ -572,6 +574,8 @@ describe('deterministic brief and recurring adapter', () => {
         [],
         runway,
         '2030-06-18',
+        0,
+        [],
       ).notices,
     ).toEqual([])
     const uuid = tx({
@@ -589,9 +593,10 @@ describe('deterministic brief and recurring adapter', () => {
       null,
     )
     expect(
-      brief.notices.find((n) => n.title.includes('subscription'))
-        ?.evidenceTransactionIds,
-    ).toEqual([])
+      brief.notices
+        .find((n) => n.title.includes('subscription'))
+        ?.evidence.map((e) => e.id),
+    ).toEqual(['synthetic-uuid'])
     expect(
       brief.notices.find((n) => n.title.includes('subscription'))?.agentPrompt,
     ).toContain('synthetic-uuid')

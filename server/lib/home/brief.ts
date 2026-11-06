@@ -2,6 +2,7 @@ import type { RecurringMerchant } from '../../types.js'
 import { addDays, monthOffset, round } from './dates.js'
 import { stableId } from './obligations.js'
 import { isChecking } from './household.js'
+import { avoidableCosts, dataFreshness, doubleCharges } from './signals.js'
 import {
   cardIssuer,
   isolateName,
@@ -13,6 +14,7 @@ import {
   transactionLabel,
 } from './labels.js'
 import type {
+  DataFreshness,
   BriefResponse,
   Commitment,
   HomeTransaction,
@@ -178,6 +180,27 @@ export function recurringItems(
         b.annualized - a.annualized || a.merchant.localeCompare(b.merchant),
     )
 }
+const EVIDENCE_LIMIT = 12
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+function monthName(month: string) {
+  return MONTHS[Number(month.slice(5, 7)) - 1]
+}
+function shortDate(date: string) {
+  return `${Number(date.slice(8, 10))} ${monthName(date).slice(0, 3)}`
+}
 export interface CategorySeries {
   id: string
   name: string
@@ -193,6 +216,7 @@ export function buildBrief(
   runway: RunwayResponse,
   lastImportAt: string | null,
   floor = 0,
+  freshness: DataFreshness[] = dataFreshness(rows, today),
 ): BriefResponse {
   const day = new Date(today + 'T12:00:00Z').getUTCDay()
   const weekOf = addDays(today, -((day + 6) % 7))
@@ -226,7 +250,21 @@ export function buildBrief(
     points: number[] | null = null,
     impact = 0,
     context = '',
+    evidenceOverride?: BriefResponse['notices'][number]['evidence'],
   ) {
+    const evidence =
+      evidenceOverride ??
+      [...txs]
+        .sort((a, b) => b.date.localeCompare(a.date) || a.amount - b.amount)
+        .map((t) => ({
+          id: t.id,
+          date: t.date,
+          label: transactionLabel(t),
+          ...(transactionLabel(t) !== t.merchant
+            ? { rawMerchant: t.merchant }
+            : {}),
+          amount: t.amount,
+        }))
     notices.push({
       id: stableId('notice', key),
       severity,
@@ -234,12 +272,44 @@ export function buildBrief(
       body,
       impact,
       chart: points ? { points } : null,
-      evidenceTransactionIds: txs
-        .map((t) => Number(t.id))
-        .filter((n) => Number.isSafeInteger(n) && n > 0),
+      evidence: evidence.slice(0, EVIDENCE_LIMIT),
+      evidenceCount: evidence.length,
       agentPrompt: `Review this SpendWise household finding as of ${today}: ${title}. ${body} Scope: routine household transactions, internal transfers excluded. ${context} ${txs.length ? `Transaction IDs: ${txs.map((t) => t.id).join(', ')}.` : ''} Check the source records and explain the evidence and uncertainty before proposing changes.`,
     })
   }
+  const doubles = doubleCharges(rows, today)
+  if (doubles.length) {
+    const [first, second] = doubles[0]
+    const name = isolateName(transactionLabel(first))
+    notice(
+      `double:${doubles
+        .flat()
+        .map((t) => t.id)
+        .sort()
+        .join('|')}`,
+      'action',
+      doubles.length === 1
+        ? `${name} may have charged you twice`
+        : `${doubles.length} possible double charges`,
+      doubles.length === 1
+        ? `${formatMoney(-first.amount)} on ${shortDate(first.date)} and ${formatMoney(-second.amount)} on ${shortDate(second.date)}. Check with the merchant if you only bought once.`
+        : `Together they add up to ${formatMoney(doubles.reduce((sum, [, b]) => sum - b.amount, 0))} you may not owe. Check each pair below.`,
+      doubles.flat(),
+      null,
+      doubles.reduce((sum, [, b]) => sum - b.amount, 0),
+    )
+  }
+  const avoidable = avoidableCosts(rows, today)
+  if (avoidable)
+    notice(
+      `avoidable:${avoidable.month}`,
+      'watch',
+      `${formatMoney(avoidable.total)} went to fees and interest in ${monthName(avoidable.month)}`,
+      `${avoidable.interest > 0 ? `${formatMoney(avoidable.interest)} of it is overdraft interest. ` : ''}Over the last 12 months: ${formatMoney(avoidable.yearTotal)}.`,
+      avoidable.rows,
+      null,
+      avoidable.total,
+    )
   const mismatches = commitments.filter((o) => o.note)
   if (mismatches.length) {
     const impact = mismatches.reduce(
@@ -271,6 +341,18 @@ export function buildBrief(
       null,
       impact,
       `Obligation IDs: ${mismatches.map((o) => o.id).join(', ')}.`,
+      mismatches
+        .flatMap((o) =>
+          o.trail.flatMap((t) =>
+            (t.payments ?? []).map((p, i) => ({
+              id: `${o.id}:${t.month}:${i}`,
+              date: p.date,
+              label: o.name,
+              amount: -p.amount,
+            })),
+          ),
+        )
+        .sort((a, b) => b.date.localeCompare(a.date)),
     )
   }
   if (comparedShare > 0.3) {
@@ -396,6 +478,20 @@ export function buildBrief(
         ? `The last household import was on ${lastImportAt.slice(0, 10)}. Recent activity may be missing.`
         : 'No completed household import is available.',
     )
+  const stale = freshness.filter((f) => f.stale)
+  if (
+    stale.length &&
+    lastImportAt &&
+    lastImportAt.slice(0, 10) >= addDays(today, -7)
+  )
+    notice(
+      `freshness:${stale.map((f) => `${f.label}:${f.through}`).join('|')}`,
+      'watch',
+      stale.length === 1
+        ? `No new ${stale[0].label.toLowerCase()} activity since ${shortDate(stale[0].through)}`
+        : `No new activity since ${shortDate(stale[0].through)}`,
+      'The daily import ran, but it found nothing newer. Anything you paid since then is missing from these numbers.',
+    )
   const priority = { action: 0, watch: 1, info: 2 }
   notices.sort(
     (a, b) =>
@@ -423,8 +519,14 @@ export function buildBrief(
     weekOf,
     headline: count
       ? `${count} thing${count === 1 ? '' : 's'} worth a look.`
-      : 'All good.',
+      : coverageNotice
+        ? 'Nothing urgent, but the picture is incomplete.'
+        : 'All good.',
     notices: visible,
-    coverage: { uncategorizedShare: round(uncategorizedShare), lastImportAt },
+    coverage: {
+      uncategorizedShare: round(uncategorizedShare),
+      lastImportAt,
+      freshness,
+    },
   }
 }

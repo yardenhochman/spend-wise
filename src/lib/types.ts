@@ -328,6 +328,7 @@ export interface RunwayResponse {
   low: { date: string; balance: number } | null
   nextSalary: { date: string; amount: number } | null
   warnings: string[]
+  freshness: DataFreshness[]
 }
 
 export type TrailStatus =
@@ -384,6 +385,20 @@ export interface CommitmentsResponse {
   }
 }
 
+export interface DataFreshness {
+  label: string
+  through: string
+  stale: boolean
+}
+
+export interface NoticeEvidence {
+  id: string
+  date: string
+  label: string
+  rawMerchant?: string
+  amount: number
+}
+
 export interface BriefResponse {
   weekOf: string
   headline: string
@@ -394,10 +409,15 @@ export interface BriefResponse {
     body: string
     chart: { points: number[] } | null
     rawMerchants?: string[]
-    evidenceTransactionIds: number[]
+    evidence: NoticeEvidence[]
+    evidenceCount: number
     agentPrompt: string
   }[]
-  coverage: { uncategorizedShare: number; lastImportAt: string | null }
+  coverage: {
+    uncategorizedShare: number
+    lastImportAt: string | null
+    freshness: DataFreshness[]
+  }
 }
 
 export interface ProjectsResponse {

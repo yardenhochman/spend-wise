@@ -72,5 +72,6 @@ export function buildRunway(
     low,
     nextSalary,
     warnings: [...new Set(resultWarnings)],
+    freshness: [],
   }
 }

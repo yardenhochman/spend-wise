@@ -21,6 +21,7 @@ import {
   matchesObligation,
 } from './obligations.js'
 import { buildRunway } from './runway.js'
+import { dataFreshness } from './signals.js'
 import { cardIssuer, displayName, serviceKey } from './labels.js'
 import { cardSettlementEvents, salaryEvents } from './settlements.js'
 import type {
@@ -274,7 +275,10 @@ export function homeRunway(deps: HomeDeps, ctx: HomeContext, count: number) {
     warnings.push(
       'Some obligations cannot be projected without an amount or regular cadence',
     )
-  return buildRunway(ctx.today, count, balances, events, warnings)
+  return {
+    ...buildRunway(ctx.today, count, balances, events, warnings),
+    freshness: dataFreshness(ctx.all, ctx.today),
+  }
 }
 export function homeCommitments(
   deps: HomeDeps,
@@ -389,6 +393,7 @@ export function homeBrief(deps: HomeDeps, ctx: HomeContext) {
     homeRunway(deps, ctx, 56),
     ctx.lastImportAt,
     deps.config?.runwayFloor ?? 0,
+    dataFreshness(ctx.all, ctx.today),
   )
   return {
     ...brief,

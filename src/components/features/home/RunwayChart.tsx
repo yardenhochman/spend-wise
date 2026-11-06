@@ -43,6 +43,11 @@ export default function RunwayChart({ data }: { data: RunwayResponse }) {
         role="img"
         aria-label={`Eight-week balance forecast${low ? `, lowest balance ${signedILS(low.balance, formatILS(low.balance)).replace(/^\+/, '')} on ${format(parseISO(low.date), 'd MMM')}` : ''}. Dashed line marks zero balance.`}
       >
+        <polygon
+          points={`${x(data.days[0].date)},${y(0)} ${points} ${x(data.days[data.days.length - 1].date)},${y(0)}`}
+          fill="var(--color-brand)"
+          opacity=".1"
+        />
         <line
           x1={pad}
           x2={width - pad}
@@ -52,14 +57,8 @@ export default function RunwayChart({ data }: { data: RunwayResponse }) {
           strokeDasharray="4 4"
           opacity=".65"
         />
-        <text
-          x={width - pad}
-          y={y(0) - 7}
-          textAnchor="end"
-          fontSize="10"
-          fill="var(--destructive)"
-        >
-          ₪0 floor
+        <text x={pad} y={y(0) + 13} fontSize="10" fill="var(--destructive)">
+          ₪0
         </text>
         {salaries.map((e, index) => (
           <g key={`${e.date}-${index}`}>
@@ -104,12 +103,13 @@ export default function RunwayChart({ data }: { data: RunwayResponse }) {
               />
               <text
                 x={Math.max(65, Math.min(width - 65, x(low.date)))}
-                y={Math.min(bottom - 5, y(low.balance) + 20)}
+                y={Math.max(top, y(low.balance) - 12)}
                 textAnchor="middle"
-                fontSize="10"
+                fontSize="11"
+                fontWeight="600"
                 fill="var(--foreground)"
               >
-                low{' '}
+                Low{' '}
                 {signedILS(low.balance, formatILS(low.balance)).replace(
                   /^\+/,
                   '',

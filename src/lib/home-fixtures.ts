@@ -107,6 +107,10 @@ export function createHomeFixtures(today = new Date()) {
     warnings: [
       'Card settlements and salary dates are estimates. Daily spending is estimated at ₪135.',
     ],
+    freshness: [
+      { label: 'Checking', through: date(-1), stale: false },
+      { label: 'Cards', through: date(-1), stale: false },
+    ],
   }
   const months = Array.from({ length: 6 }, (_, i) =>
     format(addMonths(today, i - 5), 'yyyy-MM'),
@@ -224,12 +228,39 @@ export function createHomeFixtures(today = new Date()) {
     headline: 'Looking steady. Two things worth a look.',
     notices: [
       {
+        id: 'demo-double',
+        severity: 'action',
+        title: 'Corner Pharmacy may have charged you twice',
+        body: '₪240 on two days in a row. Check with the merchant if you only bought once.',
+        chart: null,
+        evidence: [
+          {
+            id: 'demo-double-2',
+            date: date(-2),
+            label: 'Corner Pharmacy',
+            rawMerchant: 'CORNER PHARM 118',
+            amount: -240,
+          },
+          {
+            id: 'demo-double-1',
+            date: date(-3),
+            label: 'Corner Pharmacy',
+            rawMerchant: 'CORNER PHARM 118',
+            amount: -240,
+          },
+        ],
+        evidenceCount: 2,
+        agentPrompt:
+          'Using this synthetic SpendWise example, review a possible double charge of ₪240 on two consecutive days.',
+      },
+      {
         id: 'demo-short',
         severity: 'action',
         title: 'Building fee is ₪40 short',
         body: 'The expected fee is ₪320. The latest payment was ₪280.',
         chart: null,
-        evidenceTransactionIds: [],
+        evidence: [],
+        evidenceCount: 0,
         agentPrompt:
           'Using this synthetic SpendWise example, help me review a building fee: expected ₪320, latest payment ₪280, a ₪40 shortfall. Explain what to verify before changing the standing order.',
       },
@@ -239,7 +270,8 @@ export function createHomeFixtures(today = new Date()) {
         title: 'Groceries are trending up',
         body: 'Monthly spending rose 16% over the last three months. Worth checking what changed.',
         chart: { points: [1950, 1880, 2040, 2100, 2180, 2262] },
-        evidenceTransactionIds: [],
+        evidence: [],
+        evidenceCount: 0,
         agentPrompt:
           'Using this synthetic SpendWise example, investigate groceries rising from ₪1,950 to ₪2,262 over three months. Compare merchant frequency, basket sizes and unusual purchases; ask for transaction evidence before drawing conclusions.',
       },
@@ -249,7 +281,8 @@ export function createHomeFixtures(today = new Date()) {
         title: 'Cash stays above zero',
         body: `The forecast low is ${formatILS(runway.low?.balance ?? 0)} before the next estimated salary. Keep estimates in mind.`,
         chart: null,
-        evidenceTransactionIds: [],
+        evidence: [],
+        evidenceCount: 0,
         agentPrompt:
           'Review the SpendWise household runway using current balances, expected payments and salary timing. Identify uncertain estimates and the lowest forecast balance. Do not make transfers or change payments.',
       },
@@ -257,6 +290,10 @@ export function createHomeFixtures(today = new Date()) {
     coverage: {
       uncategorizedShare: 0.032,
       lastImportAt: `${asOf}T08:00:00+03:00`,
+      freshness: [
+        { label: 'Checking', through: date(-1), stale: false },
+        { label: 'Cards', through: date(-1), stale: false },
+      ],
     },
   }
   const projects: ProjectsResponse = {

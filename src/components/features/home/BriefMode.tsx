@@ -1,38 +1,40 @@
 import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
-import { match } from 'ts-pattern'
-import { ArrowUpRight, Check, CircleAlert, Eye, Info } from 'lucide-react'
+import {
+  ArrowUpRight,
+  Check,
+  ChevronDown,
+  CircleAlert,
+  Eye,
+  Info,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getHomeBrief } from '@/lib/api'
 import type { BriefResponse } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { formatILS } from '@/utils/currency'
+import DataThrough from './DataThrough'
 import { HomeResource } from './HomeState'
 
 type Notice = BriefResponse['notices'][number]
 
-function NoticeCard({ notice }: { notice: Notice }) {
+const severityStyle = {
+  action: {
+    Icon: CircleAlert,
+    color: 'text-destructive',
+    border: 'border-destructive/35',
+  },
+  watch: {
+    Icon: Eye,
+    color: 'text-(--color-cat-insurance)',
+    border: 'border-(--color-cat-insurance)/25',
+  },
+  info: { Icon: Info, color: 'text-muted-foreground', border: 'border-border' },
+}
+
+function AskAgent({ notice }: { notice: Notice }) {
   const [copied, setCopied] = useState(false)
   const [clipboardFailed, setClipboardFailed] = useState(false)
-  const presentation = match(notice.severity)
-    .with('action', () => ({
-      label: 'Action',
-      Icon: CircleAlert,
-      color: 'text-destructive',
-      border: 'border-destructive/35',
-    }))
-    .with('watch', () => ({
-      label: 'Watch',
-      Icon: Eye,
-      color: 'text-(--color-cat-insurance)',
-      border: 'border-(--color-cat-insurance)/25',
-    }))
-    .with('info', () => ({
-      label: 'Info',
-      Icon: Info,
-      color: 'text-muted-foreground',
-      border: 'border-border',
-    }))
-    .exhaustive()
   async function copyPrompt() {
     try {
       await navigator.clipboard.writeText(notice.agentPrompt)
@@ -43,28 +45,93 @@ function NoticeCard({ notice }: { notice: Notice }) {
       setCopied(false)
     }
   }
+  return (
+    <>
+      <Button
+        variant="ghost"
+        className="min-h-11 px-0 text-xs text-primary hover:bg-transparent hover:underline dark:hover:bg-transparent"
+        onClick={() => void copyPrompt()}
+        aria-label={`Ask an agent: ${notice.title}`}
+      >
+        {copied ? <Check size={14} /> : <ArrowUpRight size={14} />}
+        {copied ? 'Prompt copied' : 'Ask an agent'}
+      </Button>
+      <p role="status" className="sr-only">
+        {copied ? 'Agent prompt copied to clipboard.' : ''}
+      </p>
+      {clipboardFailed && (
+        <label className="mb-3 block text-xs text-muted-foreground">
+          Clipboard unavailable. Select and copy this prompt:
+          <textarea
+            readOnly
+            value={notice.agentPrompt}
+            onFocus={(e) => e.target.select()}
+            className="mt-2 min-h-28 w-full rounded-lg border border-input bg-background p-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+          />
+        </label>
+      )}
+    </>
+  )
+}
+
+function Evidence({ notice }: { notice: Notice }) {
+  return (
+    <div className="mt-1">
+      <ul className="divide-y divide-border border-t border-border">
+        {notice.evidence.map((row) => (
+          <li key={row.id} className="flex items-start gap-3 py-2 text-[13px]">
+            <time
+              dateTime={row.date}
+              className="w-12 shrink-0 text-xs leading-5 tabular-nums text-muted-foreground"
+            >
+              {format(parseISO(row.date), 'd MMM')}
+            </time>
+            <div className="min-w-0 flex-1 leading-5">
+              <bdi dir="auto" className="break-words">
+                {row.label}
+              </bdi>
+              {row.rawMerchant && (
+                <span className="block text-xs text-muted-foreground">
+                  <bdi dir="auto" className="break-words">
+                    {row.rawMerchant}
+                  </bdi>
+                </span>
+              )}
+            </div>
+            <span className="shrink-0 leading-5 tabular-nums">
+              {formatILS(row.amount)}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {notice.evidenceCount > notice.evidence.length && (
+        <p className="pt-2 text-xs text-muted-foreground">
+          Latest {notice.evidence.length} of {notice.evidenceCount}.
+        </p>
+      )}
+    </div>
+  )
+}
+
+function NoticeCard({ notice }: { notice: Notice }) {
+  const [open, setOpen] = useState(false)
+  const { Icon, color, border } = severityStyle[notice.severity]
   const points = notice.chart?.points ?? []
   const min = Math.min(...points)
   const max = Math.max(...points)
-  const { Icon } = presentation
+  const count = notice.evidenceCount
   return (
-    <article
-      className={cn(
-        'rounded-xl border bg-card/40 px-4 pt-3.5 pb-1',
-        presentation.border,
-      )}
-    >
-      <div
-        className={cn(
-          'mb-1.5 flex items-center gap-1.5 text-xs font-medium',
-          presentation.color,
-        )}
+    <article className={cn('rounded-xl border bg-card/40 px-4 pt-3.5', border)}>
+      <h3
+        className="flex gap-2 text-[15px] font-semibold leading-snug"
+        dir="ltr"
       >
-        <Icon size={14} aria-hidden="true" />
-        {presentation.label}
-      </div>
-      <h3 className="text-[15px] font-semibold leading-snug" dir="ltr">
-        {notice.title}
+        <Icon
+          size={16}
+          className={cn('mt-0.5 shrink-0', color)}
+          aria-label={notice.severity === 'action' ? 'Action needed' : 'Watch'}
+        />
+        <span>{notice.title}</span>
       </h3>
       <p
         className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground"
@@ -72,11 +139,6 @@ function NoticeCard({ notice }: { notice: Notice }) {
       >
         {notice.body}
       </p>
-      {notice.rawMerchants?.map((raw) => (
-        <p key={raw} className="mt-1 text-xs text-muted-foreground" dir="ltr">
-          Bank name: <bdi dir="auto">{raw}</bdi>
-        </p>
-      ))}
       {points.length > 1 && (
         <svg
           viewBox="0 0 320 48"
@@ -99,51 +161,106 @@ function NoticeCard({ notice }: { notice: Notice }) {
           />
         </svg>
       )}
-      <div className="mt-1 flex justify-end">
-        <Button
-          variant="ghost"
-          className="min-h-11 px-0 text-xs text-primary hover:bg-transparent hover:underline"
-          onClick={() => void copyPrompt()}
-          aria-label={`Ask an agent: ${notice.title}`}
-        >
-          {copied ? <Check size={14} /> : <ArrowUpRight size={14} />}
-          {copied ? 'Prompt copied' : 'Ask an agent'}
-        </Button>
-      </div>
-      <p role="status" className="sr-only">
-        {copied ? 'Agent prompt copied to clipboard.' : ''}
-      </p>
-      {clipboardFailed && (
-        <div className="mb-3 space-y-2">
-          <label className="block text-xs text-muted-foreground">
-            Clipboard unavailable. Select and copy this prompt:
-            <textarea
-              readOnly
-              value={notice.agentPrompt}
-              onFocus={(e) => e.target.select()}
-              className="mt-2 min-h-28 w-full rounded-lg border border-input bg-background p-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+      <div className="mt-1 flex items-center justify-between gap-3">
+        {count > 0 ? (
+          <Button
+            variant="ghost"
+            className="min-h-11 px-0 text-xs font-medium hover:bg-transparent hover:underline dark:hover:bg-transparent"
+            aria-expanded={open}
+            onClick={() => setOpen((value) => !value)}
+          >
+            <ChevronDown
+              size={14}
+              className={cn('transition-transform', open && 'rotate-180')}
+              aria-hidden="true"
             />
-          </label>
-        </div>
-      )}
+            {count === 1 ? 'See the transaction' : `See ${count} transactions`}
+          </Button>
+        ) : (
+          <span />
+        )}
+        <AskAgent notice={notice} />
+      </div>
+      {open && <Evidence notice={notice} />}
+      {open && <div className="h-2" />}
     </article>
   )
 }
 
+function QuietNotice({ notice }: { notice: Notice }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <li>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex min-h-11 w-full items-center gap-2 py-2 text-start text-sm focus-visible:outline-2 focus-visible:outline-ring"
+      >
+        <span className="min-w-0 flex-1" dir="ltr">
+          {notice.title}
+        </span>
+        <ChevronDown
+          size={16}
+          className={cn(
+            'shrink-0 text-muted-foreground transition-transform',
+            open && 'rotate-180',
+          )}
+          aria-hidden="true"
+        />
+      </button>
+      {open && (
+        <div className="pb-2">
+          <p
+            className="text-[13px] leading-relaxed text-muted-foreground"
+            dir="ltr"
+          >
+            {notice.body}
+          </p>
+          {notice.evidenceCount > 0 && <Evidence notice={notice} />}
+          <div className="flex justify-end">
+            <AskAgent notice={notice} />
+          </div>
+        </div>
+      )}
+    </li>
+  )
+}
+
 function Brief({ data }: { data: BriefResponse }) {
+  const main = data.notices.filter((n) => n.severity !== 'info')
+  const quiet = data.notices.filter((n) => n.severity === 'info')
   return (
     <>
       <p className="text-sm text-muted-foreground">
         Week of {format(parseISO(data.weekOf), 'd MMM')}
       </p>
-      <h2 className="mt-2 mb-6 max-w-80 text-2xl font-semibold leading-tight tracking-tight">
+      <h2 className="mt-2 max-w-80 text-2xl font-semibold leading-tight tracking-tight text-balance">
         {data.headline}
       </h2>
-      <div className="space-y-3">
-        {data.notices.map((notice) => (
-          <NoticeCard key={notice.id} notice={notice} />
-        ))}
-      </div>
+      <DataThrough items={data.coverage.freshness} className="mt-3" />
+      {main.length > 0 && (
+        <div className="mt-6 space-y-3">
+          {main.map((notice) => (
+            <NoticeCard key={notice.id} notice={notice} />
+          ))}
+        </div>
+      )}
+      {quiet.length > 0 && (
+        <section className="mt-7" aria-labelledby="also-noticed">
+          <h3
+            id="also-noticed"
+            className="border-b border-border pb-2 text-sm font-semibold"
+          >
+            Also noticed
+          </h3>
+          <ul className="divide-y divide-border">
+            {quiet.map((notice) => (
+              <QuietNotice key={notice.id} notice={notice} />
+            ))}
+          </ul>
+        </section>
+      )}
       {data.notices.length === 0 && (
         <p className="py-8 text-sm text-muted-foreground">
           Nothing new to flag this week.

@@ -1,9 +1,9 @@
 # SPEC-019: Household Home Modes
 
 - **Spec ID**: SPEC-019
-- **Version**: 6
+- **Version**: 7
 - **Status**: current
-- **Last Updated**: 2026-10-17
+- **Last Updated**: 2026-11-06
 
 ---
 
@@ -31,7 +31,9 @@ All home modes cover household checking accounts and cards together. Committee a
 
 ## Runway
 
-- Show the current household balance, snapshot date, and a daily balance forecast over eight weeks.
+- Show the current household balance, snapshot date, each source's latest transaction date, and a daily balance forecast over eight weeks.
+- The callout answers what is left before the next salary, then the lowest point.
+- Upcoming events are grouped into the next seven days and later, each with its total going out. Every row shows a date tile, relative day and amount; the last event of a day also shows the forecast balance after it.
 - The forecast shows salary dates, a dashed zero-balance reference, and the lowest point with date and amount. A plain-language callout explains the forecast low without promising that estimates are certain.
 - List every upcoming event from today through the later of the next salary date and today + 14 days, including all events on the final day. Estimated events are labelled. Event availability does not depend on a balance snapshot. Preserve each known card cycle as its own readable estimated bill; unlinked cycles use observed household settlement dates and replace overlapping issuer aggregates. An issuer debit cannot mark unrelated card cycles paid. Project suggested and confirmed checking obligations and each mortgage on its own payment day, once per occurrence. Card-paid obligations remain covered by card bills. Separate recurring salary streams even when their bank descriptions are identical; distinguish them by receiving account and recurring payment timing. If the next salary is unknown, show available upcoming events and say so.
 - If no balance is available, say “Balance not available yet” and “Balances arrive with the daily bank import. Upcoming payments are listed below.” Do not offer an upload action. Never imply a missing balance is zero.
@@ -39,7 +41,7 @@ All home modes cover household checking accounts and cards together. Committee a
 
 ## Commitments
 
-- Show current-month counts of paid, due, and late payment statuses across every displayed obligation, including suggestions.
+- State the total still to pay this month from known expected amounts, then show current-month counts of paid, due, and late payment statuses across every displayed obligation, including suggestions.
 - Each obligation shows its name, expected amount when known, cadence, note when present, and six months of payment history from oldest to newest.
 - Paid, due, late, unconfirmed, and no payment expected have distinct visual and accessible labels. Month labels and a legend explain the trail.
 - Confirmation preserves payment matching and paid history. Match normalized bank merchants within the occurrence month; use amount tolerance to distinguish fixed repayments sharing a bank description. Variable transfers may consist of several payments. An observed payment remains paid even when an amount difference merits a note. Late requires no matching payment and a date strictly after the due date plus grace.
@@ -50,8 +52,13 @@ All home modes cover household checking accounts and cards together. Committee a
 
 ## Brief
 
-- Show the current weekly headline and notice cards, distinguished as action, watch, or info with text as well as color.
+- The headline is an honest answer. “All good.” appears only when nothing needs attention and the data is complete enough to say so; otherwise it says the picture is incomplete.
+- Action and watch notices are cards. Info notices are compact “Also noticed” rows that expand on tap, so they never compete with what matters.
 - Notices include their title and explanation, with an optional trend chart.
+- Each notice backed by transactions offers “See N transactions”: date, label, bank name and amount, newest first, up to the latest 12 with the total count stated.
+- Possible double charges are action notices: identical merchant on the same card or in checking, amounts within 1% or ₪2, within two days, at least ₪100, within 14 days of the latest data, in the same billing cycle, excluding internal and generic transfers. Installments bill in different cycles and never match. Charges on two cards are separate fees, and two spellings of one purchase are an import duplicate, so neither is flagged.
+- Fees and overdraft interest from the last complete month are a watch notice from ₪50, with the 12-month total. They buy no quality of life, so they are stated as money, not as a category.
+- Coverage states, per source, the date of its latest transaction. A source quiet for over three days is marked and raises a watch notice: a successful import does not prove new data arrived.
 - “Ask an agent” copies the notice’s self-contained prompt and confirms success. Clipboard failure provides the prompt for manual copying.
 - Coverage states the uncategorized share and last import, including an explicit unknown state.
 

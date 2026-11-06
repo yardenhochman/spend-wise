@@ -104,8 +104,8 @@ export default function MerchantName({
             {name}
           </bdi>
           <Pencil
-            size={13}
-            className="shrink-0 text-muted-foreground"
+            size={12}
+            className="shrink-0 text-muted-foreground opacity-50"
             aria-hidden="true"
           />
         </Dialog.Trigger>

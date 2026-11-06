@@ -25,7 +25,7 @@ const history = (merchant: string, amounts = [200, 200, 200]) =>
   )
 const emptyRunway = buildRunway(today, 1, [], [])
 const brief = (rows: HomeTransaction[], commitments: Commitment[] = []) =>
-  buildBrief(today, rows, commitments, [], [], [], emptyRunway, today)
+  buildBrief(today, rows, commitments, [], [], [], emptyRunway, today, 0, [])
 
 describe('home signal quality regressions', () => {
   it('keeps every supported issuer spelling out of obligations, including unflagged ledger rows', () => {
@@ -303,7 +303,7 @@ describe('home signal quality regressions', () => {
     expect(b.notices[0].agentPrompt).toContain('Categorize')
     expect(b.notices[0].agentPrompt).toContain('uncat-small')
     expect(b.notices[0].body).not.toContain('uncat-small')
-    expect(b.headline).toBe('All good.')
+    expect(b.headline).toBe('Nothing urgent, but the picture is incomplete.')
   })
   it('uses the six-month count threshold for drift, independently of recent coverage and amount sizes', () => {
     const series = [
@@ -322,7 +322,7 @@ describe('home signal quality regressions', () => {
       }),
     )
     const run = (r: HomeTransaction[]) =>
-      buildBrief(today, r, [], [], series, [], emptyRunway, today)
+      buildBrief(today, r, [], [], series, [], emptyRunway, today, 0, [])
     expect(run(rows).notices[0].title).toBe(
       '\u2068Synthetic category\u2069 spending changed',
     ) // exactly 30%, despite the amount share

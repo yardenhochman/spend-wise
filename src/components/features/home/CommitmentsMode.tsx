@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 import { formatILS } from '@/utils/currency'
 import { formatMonthAbbr, formatMonthLabel } from '@/utils/dates'
 import { apiErrorMessage, HomeResource } from './HomeState'
-import { paymentCounts } from './presentation'
+import { dueThisMonth, paymentCounts } from './presentation'
 
 function TrailDot({ status, label }: { status: TrailStatus; label: string }) {
   const style = match(status)
@@ -147,6 +147,7 @@ function Commitments({
       trail: o.trail.map((t) => monthUpdates[`${o.id}:${t.month}`] ?? t),
     }))
   const counts = paymentCounts(obligations, currentMonth)
+  const stillDue = dueThisMonth(obligations, currentMonth)
   const hasSuggestions = obligations.some((o) => !confirmed(o.id, o.confirmed))
   async function dismiss(id: string, name: string) {
     setPendingId(id)
@@ -205,6 +206,11 @@ function Commitments({
       <p className="mb-3 text-sm text-muted-foreground">
         {formatMonthLabel(currentMonth)}
       </p>
+      {stillDue > 0 && (
+        <p className="mb-3 text-xl font-semibold tracking-tight tabular-nums">
+          {formatILS(stillDue)} still to pay this month
+        </p>
+      )}
       <div
         className="flex flex-wrap gap-2"
         aria-label="Current month payment counts"
