@@ -1,7 +1,7 @@
 # SPEC-020: Agent Access (Read-Only MCP)
 
 - **Spec ID**: SPEC-020
-- **Version**: 1
+- **Version**: 2
 - **Status**: current
 - **Last Updated**: 2026-11-06
 
@@ -25,7 +25,7 @@ There are no write tools. Nothing an agent does through this server can categori
 
 ## Every Answer
 
-- States the date it was computed, the latest transaction per account, the last import and the balance date, so a reader can tell how current it is. Old data produces a visible warning.
+- States the date it was computed, the latest transaction per account, how current checking and cards are, the last import and the balance date. Stale data, as Home defines it, produces a visible warning.
 - Returns evidence rows: date, merchant, posted amount, amount counted in the figure, category and account. Forecast figures return forecast rows marked as estimated, with the balance snapshots and the most recent transaction behind each forecast row.
 - Each figure names the exact `transactions_for_figure` request that lists its rows. Those rows add up to the figure.
 - A finding that has no transaction behind it (a stale import, for example) says so instead of implying evidence.
@@ -43,7 +43,8 @@ There are no write tools. Nothing an agent does through this server can categori
 - Spending is the sum of outflows. Money coming in, including refunds, is reported separately, as on Insights.
 - A billing-spread payment counts evenly across its spread months, as on Insights. Its row shows both the posted amount and the amount counted.
 - A partial month compares like with like: spending through the same day of the month, in each of the six preceding months, using the median as usual. The comparison stops at the latest day with data, so slow card imports do not read as lower spending. Above or below usual needs at least a 25% and ₪100 difference, as on Brief. Fewer than three comparison months is reported as not enough history. When more than 30% of comparison transactions are uncategorized, category comparisons are marked unreliable.
-- `anything_off` returns the same notices as Brief, plus late commitments, possible double charges (same merchant and amount within three days) and fees or interest. It cannot tell whether a subscription is used.
+- `anything_off` returns Brief's notices, including its possible double charges and fees or interest (SPEC-019 owns those rules), plus late commitments. It can miss a smaller notice that Brief's limit of five crowds out, and it cannot tell whether a subscription is used.
+- Two spellings of one card purchase can be imported as duplicates, so spending answers warn that figures can run slightly high.
 
 ## Access
 

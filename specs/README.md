@@ -61,4 +61,4 @@ When an agent begins work on a spec, it sets status to `in-progress`. Other agen
 | SPEC-017 | [export.md](./SPEC-017-export.md)                                 | Export & Reporting                    | current    | 1       |
 | SPEC-018 | [design-system.md](./SPEC-018-design-system.md)                   | Design System & Theming               | current    | 2       |
 | SPEC-019 | [home-modes.md](./SPEC-019-home-modes.md)                         | Household Home Modes                  | current    | 7       |
-| SPEC-020 | [agent-access.md](./SPEC-020-agent-access.md)                     | Agent Access (Read-Only MCP)          | current    | 1       |
+| SPEC-020 | [agent-access.md](./SPEC-020-agent-access.md)                     | Agent Access (Read-Only MCP)          | current    | 2       |

@@ -100,7 +100,7 @@ export function createMcpServer(deps: HomeDeps, log: Log): McpServer {
   )
   tool(
     'anything_off',
-    'Does anything look off? The home screen Brief notices plus late commitments, possible double charges and fees or interest, each with its evidence. Takes no arguments.',
+    'Does anything look off? The home screen Brief notices, including possible double charges and fees or interest, plus late commitments, each with its evidence. Takes no arguments.',
     {},
     () => anythingOff(deps),
   )

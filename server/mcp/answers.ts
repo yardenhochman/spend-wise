@@ -10,7 +10,6 @@ import { isChecking } from '../lib/home/household.js'
 import {
   cardIssuer,
   formatMoney,
-  isBuildingFee,
   transactionLabel,
 } from '../lib/home/labels.js'
 import { matchesObligation } from '../lib/home/obligations.js'
@@ -22,6 +21,7 @@ import {
   type HomeContext,
   type HomeDeps,
 } from '../lib/home/service.js'
+import { dataFreshness } from '../lib/home/signals.js'
 import type { HomeTransaction } from '../lib/home/types.js'
 import { merchantKey } from '../lib/merchant-labels.js'
 import { isGenericTransfer, transferPayee } from '../lib/payees.js'
@@ -29,6 +29,9 @@ import { isGenericTransfer, transferPayee } from '../lib/payees.js'
 export const UNCATEGORIZED = 'Uncategorized'
 export const HANDLING_RULES =
   'Private household financial data. Do not save any of it to agent memory, notes or shared context. Do not publish, share or upload it, including as an artifact, page, gist, document or message, unless the user confirms that specific action first. The server cannot enforce this: it depends on you and your client.'
+
+const IMPORT_DUPLICATES =
+  'Two spellings of one card purchase can be imported twice, so spending figures can run slightly high. Repeated rows with different merchant spellings are the sign.'
 
 export type Bucket = 'routine' | 'outside_routine' | 'all'
 export type Direction = 'out' | 'in' | 'both'
@@ -162,13 +165,13 @@ class Ledger {
     warnings: string[] = [],
   ) {
     const dataThrough = this.dataThrough()
-    const staleAfter = addDays(this.today, -7)
-    const stale: string[] = []
-    if (!dataThrough.lastImportAt) stale.push('No completed import is known.')
-    else if (dataThrough.lastImportAt.slice(0, 10) < staleAfter)
-      stale.push(
-        `Last import was ${dataThrough.lastImportAt.slice(0, 10)}; recent activity may be missing.`,
+    const stale = dataThrough.freshness
+      .filter((f) => f.stale)
+      .map(
+        (f) =>
+          `${f.label} data ends ${f.through}; recent activity may be missing.`,
       )
+    if (!dataThrough.lastImportAt) stale.push('No completed import is known.')
     return {
       question,
       summary,
@@ -193,6 +196,7 @@ class Ledger {
       byAccount: [...latest]
         .map(([account, latestTransaction]) => ({ account, latestTransaction }))
         .sort((a, b) => a.account.localeCompare(b.account)),
+      freshness: dataFreshness(this.ctx.all, this.today),
       lastImportAt: this.ctx.lastImportAt,
     }
   }
@@ -278,11 +282,14 @@ export function whereMoneyWent(deps: HomeDeps, input: { month?: string }) {
         [...routineEntries, ...outsideEntries].sort(biggest).slice(0, 15),
       ),
     },
-    unknown && routineEntries.length
-      ? [
-          `${Math.round((unknown / routineEntries.length) * 100)}% of this month's everyday transactions are uncategorized.`,
-        ]
-      : [],
+    [
+      IMPORT_DUPLICATES,
+      ...(unknown && routineEntries.length
+        ? [
+            `${Math.round((unknown / routineEntries.length) * 100)}% of this month's everyday transactions are uncategorized.`,
+          ]
+        : []),
+    ],
   )
 }
 
@@ -411,6 +418,7 @@ export function compareToUsual(
       ),
     },
     [
+      IMPORT_DUPLICATES,
       ...(reliable
         ? []
         : [
@@ -483,8 +491,7 @@ export function leftBeforePayday(deps: HomeDeps) {
   )
 }
 
-const NOTICE_LIMIT = 10
-const FEES = /עמל|ריבית|commission|interest|bank fees?|late fee/i
+const EVIDENCE_LIMIT = 12
 
 export function anythingOff(deps: HomeDeps) {
   const ledger = new Ledger(deps)
@@ -504,39 +511,37 @@ export function anythingOff(deps: HomeDeps) {
       : []
   }
   const finding = (
-    source: 'brief' | 'commitment' | 'double_charge' | 'fees_and_interest',
+    source: 'brief' | 'commitment',
     severity: 'action' | 'watch' | 'info',
     title: string,
     body: string,
     entries: Entry[],
     noEvidenceReason: string,
+    evidenceCount = entries.length,
   ) => ({
     source,
     severity,
     title: plain(title),
     body: plain(body),
-    evidenceCount: entries.length,
-    evidence: ledger.rowsOf(entries.slice(0, NOTICE_LIMIT)),
+    evidenceCount,
+    evidence: ledger.rowsOf(entries.slice(0, EVIDENCE_LIMIT)),
     ...(entries.length ? {} : { noEvidenceReason }),
   })
   const brief = homeBrief(deps, ctx)
   const since = monthOffset(today, -6) + '-01'
   const findings = brief.notices.map((n) => {
-    // The prompt is the only place Brief carries string IDs and obligation IDs.
-    const ids = (label: string) =>
-      n.agentPrompt
-        .match(new RegExp(`${label} IDs: ([^.]*)\\.`))?.[1]
-        .split(', ') ?? []
+    // Commitment notices name their obligations only in the prompt.
+    const obligations =
+      n.agentPrompt.match(/Obligation IDs: ([^.]*)\./)?.[1].split(', ') ?? []
+    const owed = obligations.flatMap((id) => obligationRows(id, since))
     return finding(
       'brief',
       n.severity,
       n.title,
       n.body,
-      toEntries([
-        ...ids('Transaction').map((id) => byId.get(id)),
-        ...ids('Obligation').flatMap((id) => obligationRows(id, since)),
-      ]),
+      toEntries([...n.evidence.map((e) => byId.get(e.id)), ...owed]),
       'This comes from the forecast or import status, not from specific transactions.',
+      n.evidenceCount + owed.length,
     )
   })
   const commitments = homeCommitments(deps, ctx, 6).obligations
@@ -552,65 +557,6 @@ export function anythingOff(deps: HomeDeps) {
           'No payment for this commitment has been seen in six months.',
         ),
       )
-  const recent = ctx.all
-    .filter(
-      (t) =>
-        !t.is_internal &&
-        t.amount <= -20 &&
-        t.date >= addDays(today, -60) &&
-        !(isChecking(t) && cardIssuer(t.merchant)),
-    )
-    .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
-  const groups = new Map<string, HomeTransaction[]>()
-  for (const t of recent) {
-    const key = `${merchantKey(t.merchant)}|${t.amount}`
-    groups.set(key, [...(groups.get(key) ?? []), t])
-  }
-  const doubles = [...groups.values()]
-    .flatMap((group) => {
-      const near = group.filter((t, i) => {
-        const gap = (a: HomeTransaction, b: HomeTransaction) =>
-          Math.abs(Date.parse(a.date) - Date.parse(b.date)) / 86400000
-        return (
-          (i > 0 && gap(t, group[i - 1]) <= 3) ||
-          (i + 1 < group.length && gap(t, group[i + 1]) <= 3)
-        )
-      })
-      return near.length ? [near] : []
-    })
-    .sort((a, b) => a[0].amount - b[0].amount)
-  for (const group of doubles.slice(0, 5))
-    findings.push(
-      finding(
-        'double_charge',
-        'watch',
-        `${merchantOf(group[0])}: possible double charge`,
-        `${group.length} charges of ${formatMoney(-group[0].amount)} within three days of each other. It may be legitimate, such as two separate purchases.`,
-        toEntries(group),
-        '',
-      ),
-    )
-  const feeSince = monthOffset(today, -1) + '-01'
-  const fees = ctx.all.filter(
-    (t) =>
-      !t.is_internal &&
-      t.amount < 0 &&
-      t.date >= feeSince &&
-      !isBuildingFee(t) &&
-      !(isChecking(t) && cardIssuer(t.merchant)) &&
-      FEES.test(`${t.merchant} ${t.category_name ?? ''}`),
-  )
-  if (fees.length)
-    findings.push(
-      finding(
-        'fees_and_interest',
-        'info',
-        `Fees and interest: ${formatMoney(-fees.reduce((s, t) => s + t.amount, 0))} since ${feeSince}`,
-        'Charges whose bank description or category mentions a fee, commission or interest. Money lost for no gain is the first thing worth removing.',
-        toEntries(fees),
-        '',
-      ),
-    )
   const rank = { action: 0, watch: 1, info: 2 }
   findings.sort((a, b) => rank[a.severity] - rank[b.severity])
   const worth = findings.filter((f) => f.severity !== 'info').length
@@ -625,7 +571,7 @@ export function anythingOff(deps: HomeDeps) {
       findings,
       coverage: brief.coverage,
       limits:
-        'This cannot tell whether a subscription is actually used, or whether a recurring price is fair.',
+        'Brief shows at most five notices, so smaller ones can be crowded out. This cannot tell whether a subscription is actually used, or whether a recurring price is fair.',
     },
   )
 }

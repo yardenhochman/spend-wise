@@ -348,22 +348,45 @@ describe('left_before_payday', () => {
 })
 
 describe('anything_off', () => {
-  it('finds double charges and fees with their rows', () => {
-    const a = anythingOff(deps)
-    const double = a.findings.find((f) => f.source === 'double_charge')!
-    expect(double.title).toContain('Synthetic Double')
-    expect(double.evidence).toHaveLength(2)
-    const fees = a.findings.find((f) => f.source === 'fees_and_interest')!
-    expect(fees.evidence[0].amount).toBe(-15)
+  // Brief owns these signals: each must appear once, as a Brief notice with its rows.
+  it('reports double charges once, from Brief, with their rows', () => {
+    const doubles = anythingOff(deps).findings.filter((f) =>
+      /charged you twice|double charge/.test(f.title),
+    )
+    expect(doubles).toHaveLength(1)
+    expect(doubles[0].source).toBe('brief')
+    expect(doubles[0].title).toContain('Synthetic Double')
+    expect(doubles[0].evidence.map((r) => r.merchant)).toEqual([
+      'Synthetic Double',
+      'Synthetic Double',
+    ])
   })
-  it('does not flag charges that are not close together', () => {
-    const a = anythingOff(deps)
+  it('does not call charges on two cards a double charge', () => {
+    const writer = new Database(path.join(dir, 'synthetic.sqlite'))
+    writer
+      .prepare(
+        "UPDATE transactions SET notes=? , account_id='card' WHERE id=(SELECT MIN(id) FROM transactions WHERE merchant='Synthetic Double')",
+      )
+      .run('leumi account 111-22222_33 card 1111')
+    writer
+      .prepare(
+        "UPDATE transactions SET notes=? , account_id='card' WHERE id=(SELECT MAX(id) FROM transactions WHERE merchant='Synthetic Double')",
+      )
+      .run('leumi account 111-22222_33 card 2222')
+    writer.close()
     expect(
-      a.findings.some(
-        (f) =>
-          f.source === 'double_charge' && f.title.includes('Synthetic Market'),
+      anythingOff(deps).findings.some((f) =>
+        f.title.includes('Synthetic Double'),
       ),
     ).toBe(false)
+  })
+  it('reports stale sources from the shared freshness signal', () => {
+    const a = whereMoneyWent(deps, { month: '2030-06' })
+    expect(a.dataThrough.freshness).toEqual([
+      { label: 'Checking', through: '2030-06-15', stale: false },
+      { label: 'Cards', through: '2030-06-13', stale: true },
+    ])
+    expect(a.warnings.join()).toContain('Cards data ends 2030-06-13')
   })
   it('explains any finding without transaction evidence', () => {
     for (const f of anythingOff(deps).findings)
