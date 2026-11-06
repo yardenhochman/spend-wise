@@ -14,6 +14,7 @@ import {
   type SupportedScraperProvider,
 } from './lib/bank-scraper-import.js'
 import { buildFuzzyIndex, findFuzzyDuplicate } from './lib/dedup.js'
+import { importIdentities } from './lib/import-duplicates.js'
 import type { RuleRow } from './types.js'
 
 type CliOptions = {
@@ -217,14 +218,7 @@ function importTransactions(args: {
     pendingSkipped: rawCount - mapped.length,
   }
 
-  const existingTxns = db
-    .prepare('SELECT date, amount, merchant, raw_hash FROM transactions')
-    .all() as {
-    date: string
-    amount: number
-    merchant: string
-    raw_hash: string
-  }[]
+  const existingTxns = importIdentities(db)
   const existingHashes = new Set(existingTxns.map((t) => t.raw_hash))
   const fuzzyIndex = buildFuzzyIndex(existingTxns)
 

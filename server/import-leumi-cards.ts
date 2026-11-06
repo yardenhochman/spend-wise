@@ -19,6 +19,7 @@ import {
   findFuzzyDuplicate,
   normalizeMerchant,
 } from './lib/dedup.js'
+import { importIdentities, wasMergedAway } from './lib/import-duplicates.js'
 import type { RuleRow } from './types.js'
 
 type CliOptions = {
@@ -491,16 +492,7 @@ function importTransactions(args: {
     legacyForeignNeedsReview: 0,
   }
 
-  const existingTxns = db
-    .prepare(
-      'SELECT date, amount, merchant, raw_hash FROM transactions t WHERE NOT EXISTS (SELECT 1 FROM transaction_valuations v WHERE v.transaction_id=t.id)',
-    )
-    .all() as {
-    date: string
-    amount: number
-    merchant: string
-    raw_hash: string
-  }[]
+  const existingTxns = importIdentities(db, { excludeValued: true })
   const existingHashes = new Set(existingTxns.map((tx) => tx.raw_hash))
   const fuzzyIndex = buildFuzzyIndex(existingTxns)
   const accountId = ensureAccount('Leumi', 'Credit Card', 'ILS')
@@ -533,7 +525,7 @@ function importTransactions(args: {
           'SELECT transaction_id FROM transaction_valuations WHERE source_key = ?',
         )
         .get(tx.sourceKey)
-      if (linked) {
+      if (linked || wasMergedAway(db, tx.sourceKey)) {
         summary.deduped += 1
         continue
       }

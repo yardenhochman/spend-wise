@@ -26,6 +26,7 @@ import {
 import { parsePdf } from './parsers/index.js'
 import { parseIbkrFlexXml } from './parsers/ibkr-flex.js'
 import { buildFuzzyIndex, findFuzzyDuplicate } from './lib/dedup.js'
+import { importIdentities } from './lib/import-duplicates.js'
 import { expandSqlTemplates, spendWiseConfig } from './lib/private-config.js'
 import { computeSpreadAdjustments } from './lib/spread.js'
 import type { SpreadTransaction } from './lib/spread.js'
@@ -726,14 +727,7 @@ app.post(
       const accountId = ensureAccount('Leumi', accountLabel, 'ILS')
 
       // Insert transactions with dedupe (hash + fuzzy cross-source matching)
-      const existingTxns = db
-        .prepare('SELECT date, amount, merchant, raw_hash FROM transactions')
-        .all() as {
-        date: string
-        amount: number
-        merchant: string
-        raw_hash: string
-      }[]
+      const existingTxns = importIdentities(db)
       const existingHashes = new Set(existingTxns.map((t) => t.raw_hash))
       const fuzzyIndex = buildFuzzyIndex(existingTxns)
 

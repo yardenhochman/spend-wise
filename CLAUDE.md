@@ -75,6 +75,8 @@ Three-layer dedup prevents duplicates across multiple bank and credit card sourc
 2. **Layer 2 — Fuzzy matching**: `buildFuzzyIndex()` + `findFuzzyDuplicate()` catch near-duplicates across sources (date ±1 day, amount ±0.5 ILS, same normalized merchant). Used by import scripts and the POST `/api/import` endpoint.
 3. **Layer 3 — DB UNIQUE constraint**: Final safety net at the database level.
 
+Rows merged by `server/merge-import-duplicates.ts` stay in `merged_transactions`; importers read `importIdentities()` so a merged row cannot return.
+
 Helper functions `normalizeMerchant()` and `normalizeAmount()` standardize Hebrew merchant names and amounts before hashing. On first run after migration, `migrateHashes()` in `db.ts` rehashes all existing transactions and removes duplicates.
 
 ### Frontend State

@@ -1,9 +1,9 @@
 # SPEC-003: Deduplication
 
 - **Spec ID**: SPEC-003
-- **Version**: 1
+- **Version**: 2
 - **Status**: current
-- **Last Updated**: 2026-02-28
+- **Last Updated**: 2026-11-06
 
 ---
 
@@ -44,3 +44,14 @@ A unique index on the hash column serves as a final safety net. If both Layer 1 
 ## Hash Migration
 
 On first startup, all existing transactions are rehashed with the current normalization rules and exact duplicates are removed. This ensures consistency if normalization logic has been refined.
+
+## Merged Duplicates
+
+One purchase can be stored twice under two spellings when an earlier import saw a different name than the posted statement.
+
+- Two rows merge only with the same date and amount, two different spellings, no conflicting categories, and the bank's own record showing exactly one charge. Two posted charges are two purchases. Identical strings and rows on two different cards never merge.
+- When one row has no card, its name must be the other name cut short, or differ only by a mirrored bracket. Rows with no card on either side are listed for a person, as are pairs the bank record cannot confirm.
+- The categorized row is kept, then a Hebrew name, then the row with a card. Tags, links, notes, valuation and spread settings move to it.
+- A merged row keeps its import identity, so later imports treat it as still present and cannot re-create it.
+- Checking-ledger card settlements are not merged. Home already counts them once.
+- A merge records what it removed, so it can be undone.

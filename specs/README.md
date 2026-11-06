@@ -44,7 +44,7 @@ When an agent begins work on a spec, it sets status to `in-progress`. Other agen
 | -------- | ----------------------------------------------------------------- | ------------------------------------- | ---------- | ------- |
 | SPEC-001 | [navigation.md](./SPEC-001-navigation.md)                         | Navigation & Information Architecture | current    | 4       |
 | SPEC-002 | [data-import.md](./SPEC-002-data-import.md)                       | Data Import & Parsing                 | current    | 5       |
-| SPEC-003 | [deduplication.md](./SPEC-003-deduplication.md)                   | Deduplication                         | current    | 1       |
+| SPEC-003 | [deduplication.md](./SPEC-003-deduplication.md)                   | Deduplication                         | current    | 2       |
 | SPEC-004 | [categorization.md](./SPEC-004-categorization.md)                 | Categorization & Rules                | current    | 1       |
 | SPEC-005 | [tags.md](./SPEC-005-tags.md)                                     | Tags & Sub-Segments                   | current    | 2       |
 | SPEC-006 | [view-modes.md](./SPEC-006-view-modes.md)                         | Legacy cashflow (home superseded)     | deprecated | 4       |

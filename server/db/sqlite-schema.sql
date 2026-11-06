@@ -190,3 +190,15 @@ CREATE TABLE IF NOT EXISTS obligation_matching_rules (
   pattern TEXT NOT NULL,
   tolerance REAL NOT NULL DEFAULT 0.15 CHECK(tolerance BETWEEN 0 AND 1)
 );
+
+-- Import identity of rows merged into another row; imports treat them as still present.
+CREATE TABLE IF NOT EXISTS merged_transactions (
+  removed_id TEXT PRIMARY KEY,
+  kept_id TEXT NOT NULL,
+  date TEXT NOT NULL,
+  merchant TEXT NOT NULL,
+  amount REAL NOT NULL,
+  raw_hash TEXT NOT NULL,
+  source_key TEXT,
+  merged_at TEXT NOT NULL
+);
