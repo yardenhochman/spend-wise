@@ -1,9 +1,9 @@
 # SPEC-010: Data Quality Review
 
 - **Spec ID**: SPEC-010
-- **Version**: 1
+- **Version**: 2
 - **Status**: current
-- **Last Updated**: 2026-02-28
+- **Last Updated**: 2026-11-06
 
 ---
 
@@ -30,6 +30,10 @@ The Review page surfaces transactions with potential data quality issues. It hel
 - A merchant has only 1 transaction in one category but 3+ transactions in a different category
 - Displayed as "Unusual cat" badge
 - Suggests the lone transaction may be miscategorized
+
+## Uncategorized Merchants
+
+The page links to the one-tap review queue for uncategorized merchants (SPEC-019).
 
 ## Page Layout
 

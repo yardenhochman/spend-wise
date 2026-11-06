@@ -51,7 +51,7 @@ When an agent begins work on a spec, it sets status to `in-progress`. Other agen
 | SPEC-007 | [transactions.md](./SPEC-007-transactions.md)                     | Transaction Management                | current    | 3       |
 | SPEC-008 | [insights.md](./SPEC-008-insights.md)                             | Insights & Analytics                  | current    | 5       |
 | SPEC-009 | [recurring.md](./SPEC-009-recurring.md)                           | Recurring & Subscriptions             | current    | 2       |
-| SPEC-010 | [review.md](./SPEC-010-review.md)                                 | Data Quality Review                   | current    | 1       |
+| SPEC-010 | [review.md](./SPEC-010-review.md)                                 | Data Quality Review                   | current    | 2       |
 | SPEC-011 | [actions.md](./SPEC-011-actions.md)                               | Actions & Recommendations             | current    | 1       |
 | SPEC-012 | [search.md](./SPEC-012-search.md)                                 | Search & Command Palette              | current    | 1       |
 | SPEC-013 | [merchant-normalization.md](./SPEC-013-merchant-normalization.md) | Merchant Normalization                | current    | 2       |
@@ -60,5 +60,5 @@ When an agent begins work on a spec, it sets status to `in-progress`. Other agen
 | SPEC-016 | [spread.md](./SPEC-016-spread.md)                                 | Billing Spread / Amortization         | current    | 1       |
 | SPEC-017 | [export.md](./SPEC-017-export.md)                                 | Export & Reporting                    | current    | 1       |
 | SPEC-018 | [design-system.md](./SPEC-018-design-system.md)                   | Design System & Theming               | current    | 2       |
-| SPEC-019 | [home-modes.md](./SPEC-019-home-modes.md)                         | Household Home Modes                  | current    | 7       |
+| SPEC-019 | [home-modes.md](./SPEC-019-home-modes.md)                         | Household Home Modes                  | current    | 8       |
 | SPEC-020 | [agent-access.md](./SPEC-020-agent-access.md)                     | Agent Access (Read-Only MCP)          | current    | 2       |

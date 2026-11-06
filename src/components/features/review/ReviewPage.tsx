@@ -1,6 +1,6 @@
 import { MerchantDisplay } from '@/components/app/MerchantName'
 import { useState, useEffect } from 'react'
-import { useSearch, useNavigate } from '@tanstack/react-router'
+import { Link, useSearch, useNavigate } from '@tanstack/react-router'
 import { CheckCircle } from 'lucide-react'
 import {
   getReviewTransactions,
@@ -150,6 +150,12 @@ export default function ReviewPage() {
 
   return (
     <div className="space-y-4">
+      <Link
+        to="/categorize"
+        className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
+      >
+        Categorize uncategorized merchants, one at a time
+      </Link>
       {/* Filter tabs */}
       <div className="flex flex-wrap gap-2 items-center">
         {FLAG_FILTERS.map(({ key, label }) => {

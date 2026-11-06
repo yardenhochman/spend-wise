@@ -206,6 +206,32 @@ export interface CategorySeries {
   name: string
   points: number[]
 }
+/** The one definition of Brief's uncategorized share, shared with the review queue. */
+export function uncategorizedCoverage(rows: HomeTransaction[], today: string) {
+  const start = monthOffset(today, -6) + '-01'
+  const until = today.slice(0, 7) + '-01'
+  const expenses = rows.filter(
+    (t) =>
+      t.amount < 0 &&
+      !t.is_internal &&
+      !(isChecking(t) && cardIssuer(t.merchant)) &&
+      t.date >= start &&
+      t.date < until,
+  )
+  const recentExpenses = expenses.filter(
+    (t) => t.date >= monthOffset(today, -3) + '-01',
+  )
+  const recentUnknown = recentExpenses.filter((t) => !t.category_name)
+  return {
+    start,
+    expenses,
+    recentUnknown,
+    uncategorizedShare: recentExpenses.length
+      ? recentUnknown.length / recentExpenses.length
+      : 0,
+  }
+}
+
 export function buildBrief(
   today: string,
   rows: HomeTransaction[],
@@ -222,21 +248,10 @@ export function buildBrief(
   const weekOf = addDays(today, -((day + 6) % 7))
   const start = monthOffset(today, -6) + '-01'
   const until = today.slice(0, 7) + '-01'
-  const expenses = rows.filter(
-    (t) =>
-      t.amount < 0 &&
-      !t.is_internal &&
-      !(isChecking(t) && cardIssuer(t.merchant)) &&
-      t.date >= start &&
-      t.date < until,
+  const { expenses, recentUnknown, uncategorizedShare } = uncategorizedCoverage(
+    rows,
+    today,
   )
-  const recentExpenses = expenses.filter(
-    (t) => t.date >= monthOffset(today, -3) + '-01',
-  )
-  const recentUnknown = recentExpenses.filter((t) => !t.category_name)
-  const uncategorizedShare = recentExpenses.length
-    ? recentUnknown.length / recentExpenses.length
-    : 0
   const comparedShare = expenses.length
     ? expenses.filter((t) => !t.category_name).length / expenses.length
     : 0

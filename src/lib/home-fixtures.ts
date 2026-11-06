@@ -4,6 +4,7 @@ import type {
   BriefResponse,
   CommitmentsResponse,
   ProjectsResponse,
+  ReviewQueueResponse,
   RunwayResponse,
   TrailStatus,
 } from './types'
@@ -288,13 +289,98 @@ export function createHomeFixtures(today = new Date()) {
       },
     ],
     coverage: {
-      uncategorizedShare: 0.032,
+      uncategorizedShare: 0.32,
+      reviewMerchants: 4,
       lastImportAt: `${asOf}T08:00:00+03:00`,
       freshness: [
         { label: 'Checking', through: date(-1), stale: false },
         { label: 'Cards', through: date(-1), stale: false },
       ],
     },
+  }
+  const reviewQueue: ReviewQueueResponse = {
+    uncategorizedShare: 0.32,
+    categories: [
+      'Groceries',
+      'Dining',
+      'Transport',
+      'Utilities',
+      'Subscriptions',
+      'Healthcare',
+      'Shopping',
+      'Entertainment',
+      'Insurance',
+      'Transfer',
+      'Other',
+    ].map((name) => ({ id: name, name })),
+    items: [
+      {
+        key: 'corner market',
+        name: 'שוק השכונה',
+        bankNames: ['שוק השכונה בע"מ'],
+        count: 12,
+        total: 2340,
+        olderCount: 3,
+        examples: [
+          { id: 'q1', date: date(-2), amount: -184, label: 'שוק השכונה' },
+          { id: 'q2', date: date(-9), amount: -212, label: 'שוק השכונה' },
+          { id: 'q3', date: date(-16), amount: -96, label: 'שוק השכונה' },
+        ],
+        suggestion: {
+          categoryId: 'Groceries',
+          categoryName: 'Groceries',
+          reason: 'You filed 9 of 10 earlier charges here as Groceries.',
+        },
+        setsRule: true,
+      },
+      {
+        key: 'city power',
+        name: 'City Power',
+        bankNames: ['CITY POWER 2023 LTD'],
+        count: 3,
+        total: 1290,
+        olderCount: 0,
+        examples: [
+          { id: 'q4', date: date(-5), amount: -430, label: 'City Power' },
+          { id: 'q5', date: date(-66), amount: -405, label: 'City Power' },
+          { id: 'q6', date: date(-127), amount: -455, label: 'City Power' },
+        ],
+        suggestion: null,
+        setsRule: true,
+      },
+      {
+        key: 'transfer|neighbor',
+        name: 'דנה לוי',
+        bankNames: ['העברה דיגיטל'],
+        count: 2,
+        total: 900,
+        olderCount: 0,
+        examples: [
+          { id: 'q7', date: date(-4), amount: -450, label: 'העברה דיגיטל' },
+          { id: 'q8', date: date(-35), amount: -450, label: 'העברה דיגיטל' },
+        ],
+        suggestion: null,
+        setsRule: false,
+      },
+      {
+        key: 'streamly',
+        name: 'Streamly',
+        bankNames: ['Streamly'],
+        count: 1,
+        total: 49,
+        olderCount: 0,
+        examples: [
+          { id: 'q9', date: date(-11), amount: -49, label: 'Streamly' },
+        ],
+        suggestion: {
+          categoryId: 'Subscriptions',
+          categoryName: 'Subscriptions',
+          reason:
+            'Your rule for \u2068Stream\u2069 files this under Subscriptions.',
+        },
+        setsRule: true,
+      },
+    ],
   }
   const projects: ProjectsResponse = {
     projects: [
@@ -314,5 +400,5 @@ export function createHomeFixtures(today = new Date()) {
       },
     ],
   }
-  return { runway, commitments, brief, projects }
+  return { runway, commitments, brief, projects, reviewQueue }
 }

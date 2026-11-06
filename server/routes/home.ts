@@ -12,6 +12,13 @@ import {
   type HomeDeps,
 } from '../lib/home/service.js'
 import type { Obligation } from '../lib/home/types.js'
+import { uncategorizedCoverage } from '../lib/home/brief.js'
+import { round } from '../lib/home/dates.js'
+import {
+  applyReviewAnswer,
+  buildReviewQueue,
+  undoReviewAnswer,
+} from '../lib/home/review-queue.js'
 const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)
 const rule = z
   .object({
@@ -112,6 +119,79 @@ export function mountHomeRoutes(app: Express, deps: HomeDeps): void {
         )
         .run(merchantKey(parsed.data.rawMerchant))
       res.json(merchantFields(deps.db, parsed.data.rawMerchant))
+    }),
+  )
+  const reviewShare = () => {
+    const ctx = homeContext(deps)
+    return round(uncategorizedCoverage(ctx.rows, ctx.today).uncategorizedShare)
+  }
+  app.get(
+    '/api/home/review-queue',
+    handler((_req, res) => {
+      const ctx = homeContext(deps)
+      res.json(buildReviewQueue(deps.db, ctx.rows, ctx.today))
+    }),
+  )
+  app.post(
+    '/api/home/review-queue/apply',
+    handler((req, res) => {
+      const parsed = z
+        .object({ key: z.string().min(1), categoryId: z.string().min(1) })
+        .strict()
+        .safeParse(req.body)
+      if (!parsed.success)
+        return res.status(400).json({
+          error: { code: 'invalid_answer', message: 'Invalid answer.' },
+        })
+      const { key, categoryId } = parsed.data
+      if (
+        !deps.db.prepare('SELECT 1 FROM categories WHERE id=?').get(categoryId)
+      )
+        return res.status(404).json({
+          error: { code: 'unknown_category', message: 'Unknown category.' },
+        })
+      const ctx = homeContext(deps)
+      const applied = applyReviewAnswer(
+        deps.db,
+        ctx.rows,
+        key,
+        categoryId,
+        new Date().toISOString(),
+      )
+      if (!applied)
+        return res.status(404).json({
+          error: { code: 'item_gone', message: 'Nothing left to categorize.' },
+        })
+      res.json({ applied, uncategorizedShare: reviewShare() })
+    }),
+  )
+  app.post(
+    '/api/home/review-queue/undo',
+    handler((req, res) => {
+      const parsed = z
+        .object({
+          key: z.string(),
+          categoryId: z.string().min(1),
+          transactionIds: z.array(z.string().min(1)),
+          createdRuleIds: z.array(z.string().min(1)),
+          changedRules: z.array(
+            z
+              .object({
+                id: z.string().min(1),
+                categoryId: z.string().min(1),
+                enabled: z.number().int(),
+              })
+              .strict(),
+          ),
+        })
+        .strict()
+        .safeParse(req.body)
+      if (!parsed.success)
+        return res.status(400).json({
+          error: { code: 'invalid_undo', message: 'Invalid undo.' },
+        })
+      undoReviewAnswer(deps.db, parsed.data)
+      res.json({ uncategorizedShare: reviewShare() })
     }),
   )
   for (const route of ['runway', 'commitments', 'brief', 'projects'] as const)
@@ -279,23 +359,19 @@ export function mountHomeRoutes(app: Express, deps: HomeDeps): void {
         .strict()
         .safeParse(req.body)
       if (!month.safeParse(req.params.month).success || !parsed.success)
-        return res
-          .status(400)
-          .json({
-            error: {
-              code: 'invalid_month_mark',
-              message: 'Invalid month or mark',
-            },
-          })
+        return res.status(400).json({
+          error: {
+            code: 'invalid_month_mark',
+            message: 'Invalid month or mark',
+          },
+        })
       const o = homeContext(deps).obligations.find(
         (o) => o.id === req.params.id,
       )
       if (!o)
-        return res
-          .status(404)
-          .json({
-            error: { code: 'not_found', message: 'Obligation not found' },
-          })
+        return res.status(404).json({
+          error: { code: 'not_found', message: 'Obligation not found' },
+        })
       deps.db.transaction(() => {
         save(o)
         if (parsed.data.status === 'clear')

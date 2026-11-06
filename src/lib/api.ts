@@ -4,6 +4,8 @@ import type {
   CommitmentsResponse,
   HomeData,
   ProjectsResponse,
+  ReviewApplied,
+  ReviewQueueResponse,
   RunwayResponse,
   ActionCardDefinition,
   Transaction,
@@ -417,6 +419,30 @@ export function getHomeCommitments() {
 
 export function getHomeBrief() {
   return getHome<BriefResponse>('/home/brief', () => createHomeFixtures().brief)
+}
+
+export function getHomeReviewQueue() {
+  return getHome<ReviewQueueResponse>(
+    '/home/review-queue',
+    () => createHomeFixtures().reviewQueue,
+  )
+}
+
+export function applyReviewAnswer(key: string, categoryId: string) {
+  return safeFetchJson<{
+    applied: ReviewApplied
+    uncategorizedShare: number
+  }>('/home/review-queue/apply', {
+    method: 'POST',
+    body: JSON.stringify({ key, categoryId }),
+  })
+}
+
+export function undoReviewAnswer(applied: ReviewApplied) {
+  return safeFetchJson<{ uncategorizedShare: number }>(
+    '/home/review-queue/undo',
+    { method: 'POST', body: JSON.stringify(applied) },
+  )
 }
 
 export function getHomeProjects() {

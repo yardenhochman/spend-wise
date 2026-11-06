@@ -1,7 +1,7 @@
 # SPEC-019: Household Home Modes
 
 - **Spec ID**: SPEC-019
-- **Version**: 7
+- **Version**: 8
 - **Status**: current
 - **Last Updated**: 2026-11-06
 
@@ -60,7 +60,22 @@ All home modes cover household checking accounts and cards together. Committee a
 - Fees and overdraft interest from the last complete month are a watch notice from ₪50, with the 12-month total. They buy no quality of life, so they are stated as money, not as a category.
 - Coverage states, per source, the date of its latest transaction. A source quiet for over three days is marked and raises a watch notice: a successful import does not prove new data arrived.
 - “Ask an agent” copies the notice’s self-contained prompt and confirms success. Clipboard failure provides the prompt for manual copying.
-- Coverage states the uncategorized share and last import, including an explicit unknown state.
+- Coverage states the uncategorized share and last import, including an explicit unknown state. While merchants await a category, Brief links to the review queue with their count.
+
+## Uncategorized Review Queue
+
+The queue turns the uncategorized share into a few answers. It opens from Brief at `/categorize` and from the Review page.
+
+- It covers the same household spending as Brief's uncategorized share, from the start of the six-month comparison through today, grouped by merchant, largest spend first. Payments to people and generic bank transfers group by payee when the bank names one.
+- One merchant shows at a time: its name with automatic direction, the bank spelling when it differs, the charge count and total, and its latest three charges. Older uncategorized charges from the merchant are stated, and an answer covers them too.
+- A “3 of 41” counter and a progress bar show position. Merchants skipped earlier come last on the next visit.
+- A suggestion comes only from the household's own data: an existing rule, then at least 70% of this merchant's categorized history, then a similarly named merchant's history, then a tag rule's category. It states its reason in plain words. Otherwise the screen says there is no suggestion. Nothing is applied without a tap.
+- One tap accepts the suggestion. A quick picker lists the most-used categories, with the full list one tap away. Skip moves on without saving.
+- An answer categorizes the merchant's uncategorized charges and sets a rule, so later imports match. Payments to people and generic transfers vary, so their answer covers only the listed charges, sets no rule, and says so.
+- The latest answer can be undone, and undo can step back through earlier answers. It restores the charges and any rule the answer changed. Charges recategorized since then keep their newer category.
+- A failed save stays on the same merchant, keeps the answer, and offers retry. An answer is never counted until saved.
+- Finishing states the new uncategorized share against the starting one and returns to Brief, or offers the skipped merchants. An empty queue says nothing needs review.
+- Controls have at least 44-pixel targets and full keyboard access. Moving to a merchant moves focus to its name; saves are announced.
 
 ## States and Presentation
 

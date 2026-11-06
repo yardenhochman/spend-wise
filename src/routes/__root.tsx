@@ -41,7 +41,9 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   const isHome = useRouterState({
-    select: (state) => state.location.pathname === '/',
+    select: (state) =>
+      state.location.pathname === '/' ||
+      state.location.pathname === '/categorize',
   })
   const [searchOpen, setSearchOpen] = useState(false)
   const [showDevtools, setShowDevtools] = useState(false)

@@ -415,9 +415,40 @@ export interface BriefResponse {
   }[]
   coverage: {
     uncategorizedShare: number
+    reviewMerchants?: number
     lastImportAt: string | null
     freshness: DataFreshness[]
   }
+}
+
+export interface ReviewQueueItem {
+  key: string
+  name: string
+  bankNames: string[]
+  count: number
+  total: number
+  olderCount: number
+  examples: { id: string; date: string; amount: number; label: string }[]
+  suggestion: {
+    categoryId: string
+    categoryName: string
+    reason: string
+  } | null
+  setsRule: boolean
+}
+
+export interface ReviewQueueResponse {
+  uncategorizedShare: number
+  categories: { id: string; name: string }[]
+  items: ReviewQueueItem[]
+}
+
+export interface ReviewApplied {
+  key: string
+  categoryId: string
+  transactionIds: string[]
+  createdRuleIds: string[]
+  changedRules: { id: string; categoryId: string; enabled: number }[]
 }
 
 export interface ProjectsResponse {

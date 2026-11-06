@@ -155,6 +155,7 @@ export interface BriefResponse {
   }[]
   coverage: {
     uncategorizedShare: number
+    reviewMerchants?: number
     lastImportAt: string | null
     freshness: DataFreshness[]
   }

@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
+import { Link, useSearch } from '@tanstack/react-router'
 import {
   ArrowUpRight,
   Check,
   ChevronDown,
+  ChevronRight,
   CircleAlert,
   Eye,
   Info,
@@ -187,7 +189,27 @@ function NoticeCard({ notice }: { notice: Notice }) {
   )
 }
 
-function QuietNotice({ notice }: { notice: Notice }) {
+function ReviewLink({ count }: { count: number }) {
+  const { fixtures } = useSearch({ strict: false }) as { fixtures?: 1 }
+  return (
+    <Link
+      to="/categorize"
+      search={{ fixtures }}
+      className="flex min-h-11 items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+    >
+      Review {count === 1 ? '1 merchant' : `${count} merchants`}, largest first
+      <ChevronRight size={16} aria-hidden="true" />
+    </Link>
+  )
+}
+
+function QuietNotice({
+  notice,
+  reviewCount,
+}: {
+  notice: Notice
+  reviewCount: number
+}) {
   const [open, setOpen] = useState(false)
   return (
     <li>
@@ -209,6 +231,7 @@ function QuietNotice({ notice }: { notice: Notice }) {
           aria-hidden="true"
         />
       </button>
+      {reviewCount > 0 && <ReviewLink count={reviewCount} />}
       {open && (
         <div className="pb-2">
           <p
@@ -230,6 +253,10 @@ function QuietNotice({ notice }: { notice: Notice }) {
 function Brief({ data }: { data: BriefResponse }) {
   const main = data.notices.filter((n) => n.severity !== 'info')
   const quiet = data.notices.filter((n) => n.severity === 'info')
+  const reviewCount = data.coverage.reviewMerchants ?? 0
+  const coverageNotice = data.notices.find((n) =>
+    n.title.endsWith('of recent transactions are uncategorized'),
+  )
   return (
     <>
       <p className="text-sm text-muted-foreground">
@@ -256,7 +283,11 @@ function Brief({ data }: { data: BriefResponse }) {
           </h3>
           <ul className="divide-y divide-border">
             {quiet.map((notice) => (
-              <QuietNotice key={notice.id} notice={notice} />
+              <QuietNotice
+                key={notice.id}
+                notice={notice}
+                reviewCount={notice === coverageNotice ? reviewCount : 0}
+              />
             ))}
           </ul>
         </section>
@@ -271,6 +302,9 @@ function Brief({ data }: { data: BriefResponse }) {
           {Math.round(data.coverage.uncategorizedShare * 1000) / 10}% of
           activity uncategorized
         </p>
+        {!coverageNotice && reviewCount > 0 && (
+          <ReviewLink count={reviewCount} />
+        )}
         <p className="mt-1">
           {data.coverage.lastImportAt
             ? `Last import ${format(parseISO(data.coverage.lastImportAt), 'd MMM yyyy, HH:mm')}`

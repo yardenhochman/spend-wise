@@ -23,6 +23,7 @@ import {
 import { buildRunway } from './runway.js'
 import { dataFreshness } from './signals.js'
 import { cardIssuer, displayName, serviceKey } from './labels.js'
+import { buildReviewQueue } from './review-queue.js'
 import { cardSettlementEvents, salaryEvents } from './settlements.js'
 import type {
   Balance,
@@ -397,6 +398,11 @@ export function homeBrief(deps: HomeDeps, ctx: HomeContext) {
   )
   return {
     ...brief,
+    coverage: {
+      ...brief.coverage,
+      reviewMerchants: buildReviewQueue(deps.db, ctx.rows, ctx.today).items
+        .length,
+    },
     notices: brief.notices.map((n) => ({
       ...n,
       rawMerchants: [

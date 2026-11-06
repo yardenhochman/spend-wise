@@ -15,6 +15,7 @@ import { Route as SubscriptionsRouteImport } from './routes/subscriptions'
 import { Route as ReviewRouteImport } from './routes/review'
 import { Route as InvestmentsRouteImport } from './routes/investments'
 import { Route as InsightsRouteImport } from './routes/insights'
+import { Route as CategorizeRouteImport } from './routes/categorize'
 import { Route as ActionsRouteImport } from './routes/actions'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -48,6 +49,11 @@ const InsightsRoute = InsightsRouteImport.update({
   path: '/insights',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CategorizeRoute = CategorizeRouteImport.update({
+  id: '/categorize',
+  path: '/categorize',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ActionsRoute = ActionsRouteImport.update({
   id: '/actions',
   path: '/actions',
@@ -62,6 +68,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/actions': typeof ActionsRoute
+  '/categorize': typeof CategorizeRoute
   '/insights': typeof InsightsRoute
   '/investments': typeof InvestmentsRoute
   '/review': typeof ReviewRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/actions': typeof ActionsRoute
+  '/categorize': typeof CategorizeRoute
   '/insights': typeof InsightsRoute
   '/investments': typeof InvestmentsRoute
   '/review': typeof ReviewRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/actions': typeof ActionsRoute
+  '/categorize': typeof CategorizeRoute
   '/insights': typeof InsightsRoute
   '/investments': typeof InvestmentsRoute
   '/review': typeof ReviewRoute
@@ -95,6 +104,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/actions'
+    | '/categorize'
     | '/insights'
     | '/investments'
     | '/review'
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/actions'
+    | '/categorize'
     | '/insights'
     | '/investments'
     | '/review'
@@ -115,6 +126,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/actions'
+    | '/categorize'
     | '/insights'
     | '/investments'
     | '/review'
@@ -126,6 +138,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActionsRoute: typeof ActionsRoute
+  CategorizeRoute: typeof CategorizeRoute
   InsightsRoute: typeof InsightsRoute
   InvestmentsRoute: typeof InvestmentsRoute
   ReviewRoute: typeof ReviewRoute
@@ -178,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InsightsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/categorize': {
+      id: '/categorize'
+      path: '/categorize'
+      fullPath: '/categorize'
+      preLoaderRoute: typeof CategorizeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/actions': {
       id: '/actions'
       path: '/actions'
@@ -198,6 +218,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActionsRoute: ActionsRoute,
+  CategorizeRoute: CategorizeRoute,
   InsightsRoute: InsightsRoute,
   InvestmentsRoute: InvestmentsRoute,
   ReviewRoute: ReviewRoute,

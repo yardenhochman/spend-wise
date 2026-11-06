@@ -1,6 +1,7 @@
 # SpendWise home redesign — shared API contract (v2)
 
 Product decisions (by the owner, final):
+
 - The home screen becomes three modes switched with BOTTOM TABS: **Runway**, **Commitments**, **Brief**.
 - A search button in the top-right header opens a bottom sheet: search box (merchant/amount/tag), **Projects** list, **Browse** links (All transactions, Categories/insights, Subscriptions, Review, Upload).
 - The old Routine/Home/Wedding view-mode switch goes away from the new shell. Wedding/Apartment/Honeymoon are "projects" (tags with a net cost). Everything on the three modes is everyday household money (= existing "routine" filter + includeInternal false).
@@ -10,66 +11,103 @@ Product decisions (by the owner, final):
 All amounts are ILS numbers (positive = money in, negative = money out, unless stated). Dates are ISO `YYYY-MM-DD`; months `YYYY-MM`.
 
 ## GET /api/home/runway?days=56
+
 ```ts
 interface RunwayResponse {
-  asOf: string                       // today
-  openingBalance: number | null      // null if no balance snapshot imported yet
-  balanceAsOf: string | null         // ISO datetime of the snapshot used
+  asOf: string // today
+  openingBalance: number | null // null if no balance snapshot imported yet
+  balanceAsOf: string | null // ISO datetime of the snapshot used
   accounts: { label: string; balance: number; asOf: string }[] // household accounts only, label is generic e.g. "Checking ••12"? NO digits — use "Checking 1", "Checking 2"
-  days: { date: string; balance: number }[]          // empty if openingBalance null
-  events: { date: string; label: string; amount: number; kind: 'salary' | 'mortgage' | 'card' | 'obligation' | 'other'; estimated: boolean }[]
+  days: { date: string; balance: number }[] // empty if openingBalance null
+  events: {
+    date: string
+    label: string
+    amount: number
+    kind: 'salary' | 'mortgage' | 'card' | 'obligation' | 'other'
+    estimated: boolean
+  }[]
   low: { date: string; balance: number } | null
   nextSalary: { date: string; amount: number } | null
-  warnings: string[]                 // e.g. "Card settlement amounts are estimates", "Balance snapshot is 3 days old"
+  warnings: string[] // e.g. "Card settlement amounts are estimates", "Balance snapshot is 3 days old"
 }
 ```
 
 ## GET /api/home/commitments?months=6
+
 ```ts
 type TrailStatus = 'paid' | 'due' | 'late' | 'unconfirmed' | 'none' | 'external'
 interface CommitmentsResponse {
-  months: string[]                   // oldest → newest, length = months
+  months: string[] // oldest → newest, length = months
   obligations: {
-    id: string; name: string; kind: 'mortgage' | 'tuition' | 'tax' | 'hoa' | 'loan' | 'utility' | 'other'
-    expectedAmount: number | null    // positive number, per occurrence
+    id: string
+    name: string
+    kind: 'mortgage' | 'tuition' | 'tax' | 'hoa' | 'loan' | 'utility' | 'other'
+    expectedAmount: number | null // positive number, per occurrence
     cadence: 'monthly' | 'bimonthly' | 'yearly' | 'irregular'
     trail: { month: string; status: TrailStatus; amount: number | null }[]
-    note: string | null              // e.g. "₪50 short vs expected"
-    confirmed: boolean               // false = auto-detected suggestion, not confirmed by the user
+    note: string | null // e.g. "₪50 short vs expected"
+    confirmed: boolean // false = auto-detected suggestion, not confirmed by the user
   }[]
-  repayments: { id: string; name: string; remaining: number; original: number | null; monthly: number | null; endDate: string | null; source: 'mortgage' | 'manual' }[]
+  repayments: {
+    id: string
+    name: string
+    remaining: number
+    original: number | null
+    monthly: number | null
+    endDate: string | null
+    source: 'mortgage' | 'manual'
+  }[]
   recurring: {
     annualTotal: number
-    items: { merchant: string; amount: number; cadence: 'monthly' | 'yearly' | 'other'; annualized: number; lastSeen: string
-             flag: 'new' | 'price-up' | 'price-down' | 'renewal-soon' | null; flagDetail: string | null }[]
+    items: {
+      merchant: string
+      amount: number
+      cadence: 'monthly' | 'yearly' | 'other'
+      annualized: number
+      lastSeen: string
+      flag: 'new' | 'price-up' | 'price-down' | 'renewal-soon' | null
+      flagDetail: string | null
+    }[]
   }
 }
 ```
 
 ## GET /api/home/brief
+
 ```ts
 interface BriefResponse {
-  weekOf: string                     // Monday of current week
-  headline: string                   // e.g. "All good. 2 things worth a look."
+  weekOf: string // Monday of current week
+  headline: string // e.g. "All good. 2 things worth a look."
   notices: {
-    id: string                       // stable across runs for the same underlying fact
+    id: string // stable across runs for the same underlying fact
     severity: 'action' | 'watch' | 'info'
-    title: string; body: string
+    title: string
+    body: string
     chart: { points: number[] } | null
     evidenceTransactionIds: number[]
-    agentPrompt: string              // self-contained prompt the user can paste into an agent
+    agentPrompt: string // self-contained prompt the user can paste into an agent
   }[]
   coverage: { uncategorizedShare: number; lastImportAt: string | null }
 }
 ```
 
 ## GET /api/home/projects
+
 ```ts
-interface ProjectsResponse { projects: { tag: string; label: string; net: number; status: 'open' | 'ended'; lastActivity: string | null }[] }
+interface ProjectsResponse {
+  projects: {
+    tag: string
+    label: string
+    net: number
+    status: 'open' | 'ended'
+    lastActivity: string | null
+  }[]
+}
 ```
+
 (Reuse the existing tag-summary service.)
 
-## PUT /api/obligations/:id  — body `{ name?, kind?, expectedAmount?, cadence?, dueDay?, matchPattern?, confirmed? }` → 200 updated obligation. POST /api/obligations to create, DELETE to remove.
+## PUT /api/obligations/:id — body `{ name?, kind?, expectedAmount?, cadence?, dueDay?, matchPattern?, confirmed? }` → 200 updated obligation. POST /api/obligations to create, DELETE to remove.
 
 ## Backend clarifications
 
@@ -88,7 +126,6 @@ interface ProjectsResponse { projects: { tag: string; label: string; net: number
 - Variable amounts count as observed payments. Only a user-confirmed expected amount or at least three prior occurrence amounts with CV <= 5% enables mismatch notes, above max(ILS 20, 5%). Mortgage matching retains its 15% tolerance. An observed payment is never forecast again in the same occurrence, even when its amount differs.
 - Brief has at most five notices, sorted by severity then financial impact. Related findings are merged. Its headline counts only displayed action/watch notices, or says “All good.” when there are none. Visible amounts are rounded ILS strings; source IDs appear only in evidence or agent prompts.
 - `coverage.uncategorizedShare` is the fraction by transaction count of routine household outflows in the last three complete calendar months, excluding internal transfers and checking card settlements. Category comparisons span six complete months; drift is suppressed if more than 30% of outflows in that compared window are uncategorized, replaced by one categorization info notice. Merchant aliases are used for display; unmatched Hebrew names are preserved.
-
 
 ## Mobile and recurring corrections (2026-10-17)
 
@@ -140,3 +177,50 @@ interface ProjectsResponse { projects: { tag: string; label: string; net: number
 - **CHANGED:** Notices replace `evidenceTransactionIds` with `evidence: {id,date,label,rawMerchant?,amount}[]` (newest first, at most 12) and `evidenceCount`. String IDs carry UUID transactions; commitment mismatches use their trail payments. Amounts follow the global sign convention.
 - **CHANGED:** `coverage` and `RunwayResponse` add `freshness: {label,through,stale}[]`, one per source (Checking, Cards), from all household transactions on or before today. `stale` means over three days old; it may be a quiet account, so copy says what is known, not that the feed failed. Without a seven-day import gap it raises one watch notice.
 - New notices come from `server/lib/home/signals.ts`: possible double charges (action) and last month's fees and interest (watch). See SPEC-019.
+
+## GET /api/home/review-queue
+
+Uncategorized household spending by merchant, largest first. `/api/home/brief` adds `coverage.reviewMerchants` (the number of items).
+
+```ts
+interface ReviewQueueResponse {
+  uncategorizedShare: number // same value as Brief's coverage
+  categories: { id: string; name: string }[] // most used first
+  items: {
+    key: string // pass back to apply
+    name: string // label, or payee for payments to people
+    bankNames: string[] // raw spellings
+    count: number // uncategorized charges in the window
+    total: number // positive spend in the window
+    olderCount: number // earlier uncategorized charges an answer also covers
+    examples: { id: string; date: string; amount: number; label: string }[] // latest 3
+    suggestion: {
+      categoryId: string
+      categoryName: string
+      reason: string
+    } | null
+    setsRule: boolean // false for payments to people and generic transfers
+  }[]
+}
+```
+
+## POST /api/home/review-queue/apply
+
+Body `{ key, categoryId }`. Saves the answer in one transaction. 404 `item_gone` if nothing is left to categorize, 404 `unknown_category` for a bad category.
+
+```ts
+interface ReviewQueueApplied {
+  uncategorizedShare: number
+  applied: {
+    key: string
+    categoryId: string
+    transactionIds: string[]
+    createdRuleIds: string[]
+    changedRules: { id: string; categoryId: string; enabled: number }[] // state before the answer
+  }
+}
+```
+
+## POST /api/home/review-queue/undo
+
+Body: the `applied` object. Clears only charges still in that category and restores rules. Returns `{ uncategorizedShare }`.
