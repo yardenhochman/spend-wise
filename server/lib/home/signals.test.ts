@@ -66,6 +66,18 @@ describe('double charges', () => {
       ),
     ).toEqual([])
   })
+  it('drops a pair once the merchant has refunded one charge', () => {
+    expect(
+      doubleCharges(
+        [
+          card('a', '2030-06-10', -250),
+          card('b', '2030-06-11', -250),
+          card('refund', '2030-06-12', 250),
+        ],
+        today,
+      ),
+    ).toEqual([])
+  })
   it('never pairs installments in different billing cycles', () => {
     expect(
       doubleCharges(

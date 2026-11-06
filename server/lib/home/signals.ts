@@ -53,6 +53,7 @@ export function doubleCharges(rows: HomeTransaction[], today: string) {
   )
   const pairs: [HomeTransaction, HomeTransaction][] = []
   const used = new Set<string>()
+  const refundsUsed = new Set<string>()
   for (const [index, a] of candidates.entries()) {
     if (used.has(a.id)) continue
     const b = candidates.slice(index + 1).find((other) => {
@@ -68,10 +69,20 @@ export function doubleCharges(rows: HomeTransaction[], today: string) {
         !(cycleA && cycleB && cycleA !== cycleB)
       )
     })
-    if (b) {
-      used.add(a.id).add(b.id)
-      pairs.push([a, b])
-    }
+    if (!b) continue
+    used.add(a.id).add(b.id)
+    const later = a.date > b.date ? a.date : b.date
+    const refund = rows.find(
+      (t) =>
+        t.amount > 0 &&
+        !refundsUsed.has(t.id) &&
+        t.date >= later &&
+        merchantKey(t.merchant) === merchantKey(a.merchant) &&
+        payingCard(t) === payingCard(a) &&
+        Math.abs(t.amount + a.amount) <= Math.max(2, 0.01 * -a.amount),
+    )
+    if (refund) refundsUsed.add(refund.id)
+    else pairs.push([a, b])
   }
   return pairs
 }
