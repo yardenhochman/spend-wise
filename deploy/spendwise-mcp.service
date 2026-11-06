@@ -1,0 +1,23 @@
+[Unit]
+Description=SpendWise read-only MCP server (tailnet HTTPS only)
+Documentation=file://%h/dev/spend-wise/docs/runbooks/mcp.md
+After=network-online.target spendwise-api.service
+
+[Service]
+WorkingDirectory=%h/dev/spend-wise
+EnvironmentFile=%h/.config/spendwise-mcp/env
+Environment=SPENDWISE_MCP_PORT=17480
+Environment=SPENDWISE_MCP_TOKEN_FILE=%h/.config/spendwise-mcp/token
+Environment=SPENDWISE_MCP_TLS_CERT=%h/.config/spendwise-mcp/cert.pem
+Environment=SPENDWISE_MCP_TLS_KEY=%h/.config/spendwise-mcp/key.pem
+ExecStartPre=-/usr/bin/tailscale cert --cert-file %h/.config/spendwise-mcp/cert.pem --key-file %h/.config/spendwise-mcp/key.pem ${SPENDWISE_MCP_TAILNET_HOST}
+ExecStart=/usr/bin/mise exec -- npx tsx server/mcp/main.ts
+# Restarting weekly picks up the renewed certificate.
+RuntimeMaxSec=7d
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

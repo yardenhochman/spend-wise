@@ -1,5 +1,6 @@
 import { merchantFields, merchantSearch } from './lib/merchant-labels.js'
 import { mountHomeRoutes } from './routes/home.js'
+import { createViewModeFilter } from './lib/view-mode.js'
 import { readMortgageSnapshot } from './lib/home/service.js'
 import { todayInIsrael } from './lib/home/dates.js'
 import { queryCategoryTrend, queryRecurring } from './lib/analytics.js'
@@ -62,6 +63,7 @@ import type {
 
 export const app = express()
 const upload = multer({ storage: multer.memoryStorage() })
+const buildViewModeFilter = createViewModeFilter(getCategoryId)
 const port = Number(process.env.PORT ?? 4000)
 
 app.use(express.json({ limit: '2mb' }))
@@ -529,102 +531,6 @@ function buildExcludedKindsFilter(
   return {
     sql: sqlParts.length ? `AND ${sqlParts.join(' AND ')}` : '',
     params,
-  }
-}
-
-function buildViewModeFilter(
-  mode: string,
-  tableAlias: string = 't',
-): ViewModeFilter {
-  const a = tableAlias
-  const homeLoanRules = expandSqlTemplates(
-    spendWiseConfig.viewModeRules.homeInclude,
-    a,
-  )
-  const weddingLoanRules = expandSqlTemplates(
-    spendWiseConfig.viewModeRules.weddingInclude,
-    a,
-  )
-  const allLoanRules = [...homeLoanRules, ...weddingLoanRules]
-  const includeRulesSql = (rules: string[]): string =>
-    rules.map((rule) => `(${rule})`).join(' OR ')
-  const excludeRulesSql = (rules: string[]): string =>
-    rules.map((rule) => `NOT (${rule})`).join(' AND ')
-
-  if (mode === 'cashflow') {
-    return {
-      sql: '',
-      params: [],
-      includeInternal: false,
-    }
-  }
-
-  if (mode === 'home') {
-    const homeId = getCategoryId('Home Purchase')
-    const mortgageId = getCategoryId('Mortgage')
-    const propertyPriceId = getCategoryId('Property Price')
-    const purchaseTaxId = getCategoryId('Purchase Tax')
-    const closingCostsId = getCategoryId('Closing Costs')
-    const homeLoansId = getCategoryId('Home Loans')
-    const consultingId = getCategoryId('Consulting')
-    return {
-      sql:
-        homeLoanRules.length > 0
-          ? `AND (${a}.category_id IN (?, ?, ?, ?, ?, ?, ?) OR ${includeRulesSql(homeLoanRules)})`
-          : `AND (${a}.category_id IN (?, ?, ?, ?, ?, ?, ?))`,
-      params: [
-        homeId,
-        mortgageId,
-        propertyPriceId,
-        purchaseTaxId,
-        closingCostsId,
-        homeLoansId,
-        consultingId,
-      ],
-      includeInternal: false,
-    }
-  }
-  if (mode === 'wedding') {
-    const weddingIds = [
-      getCategoryId('Wedding'),
-      getCategoryId('Venue & Catering'),
-      getCategoryId('Music & Sound'),
-      getCategoryId('Photography'),
-      getCategoryId('Wedding Planning'),
-      getCategoryId('Wedding Loan'),
-    ]
-    return {
-      sql:
-        weddingLoanRules.length > 0
-          ? `AND (${a}.category_id IN (${weddingIds.map(() => '?').join(',')}) OR ${includeRulesSql(weddingLoanRules)})`
-          : `AND (${a}.category_id IN (${weddingIds.map(() => '?').join(',')}))`,
-      params: weddingIds,
-      includeInternal: false,
-    }
-  }
-  // routine (default) — exclude home + wedding + mortgage + all sub-categories and special loan/mortgage txns
-  const excludeIds = [
-    getCategoryId('Home Purchase'),
-    getCategoryId('Wedding'),
-    getCategoryId('Mortgage'),
-    getCategoryId('Property Price'),
-    getCategoryId('Purchase Tax'),
-    getCategoryId('Closing Costs'),
-    getCategoryId('Home Loans'),
-    getCategoryId('Consulting'),
-    getCategoryId('Venue & Catering'),
-    getCategoryId('Music & Sound'),
-    getCategoryId('Photography'),
-    getCategoryId('Wedding Planning'),
-    getCategoryId('Wedding Loan'),
-  ]
-  return {
-    sql:
-      allLoanRules.length > 0
-        ? `AND (${a}.category_id IS NULL OR ${a}.category_id NOT IN (${excludeIds.map(() => '?').join(',')})) AND ${excludeRulesSql(allLoanRules)}`
-        : `AND (${a}.category_id IS NULL OR ${a}.category_id NOT IN (${excludeIds.map(() => '?').join(',')}))`,
-    params: excludeIds,
-    includeInternal: false,
   }
 }
 
